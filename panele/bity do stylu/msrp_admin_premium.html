@@ -1,0 +1,104 @@
+<ips:template parameters="$premium,$lastSms, $code, $skinSms" />
+{parse striping="fetchRows" classes="row2,row1"}
+<div class="maintitle ipsFilterbar clear clearfix">
+<ul class="ipsList_inline left">
+{parse template="adminTabs" group="msrp"}
+</ul>
+</div>
+{parse striping="fetchRows" classes="row2,row1"}
+<div class="ipsVerticalTabbed_content ipsLayout_content ipsBox_container">
+<div class="ipsPad">
+<h2 class="ipsType_subtitle ipsSettings_pagetitle">Wygeneruj kod</h2>
+<form method="post">
+<table class="ipb_table">
+<tbody>
+<tr class="{parse striping="fetchRows"}">
+            <td>Ilość dni</td>
+            <td width="60%">
+              <input type="number" class="input_text" min="1" max="90" name="days" />
+
+            </td>
+          </tr>
+        </tbody>
+        <if test="strlen($code)> 5">
+          <div class="message unspecific">
+            Wygenerowany kod: {$code}
+          </div>
+        </if>
+      </table>
+      <fieldset class="submit">
+        <input type="submit" value="Generuj" name="generate" class="input_submit">
+      </fieldset>
+    </form>
+    <br />
+    <h4 class="maintitle">Ostatnie kody premium</h4>
+    <div class="ipsBox_container">
+      <table class="ipb_table report_center">
+        <tbody>
+          <tr class="header">
+  					<th scope="col">Uid</th>
+  					<th scope="col">Kod</th>
+  					<th scope="col">Dni</th>
+  					<th scope="col">Wygenerował</th>
+  					<th scope="col">Użyty przez</th>
+  					<th scope="col">Data</th>
+  				</tr>
+          <foreach loop="$premium as $row">
+            <tr class="{parse striping="row"}">
+              <td>{$row['code_uid']}</td>
+              <td>{$row['code']}</td>
+              <td>{$row['days']}</td>
+              <td>{$row['created_by']}</td>
+              <td>{$row['used_by']}</td>
+              <td>{parse date="$row['activation_time']" format="short"}</td>
+              </td>
+            </tr>
+          </foreach>
+        </tbody>
+      </table>
+    </div>
+    <br />
+    <h4 class="maintitle">Ostatnie aktywacje SMS</h4>
+    <div class="ipsBox_container">
+      <table class="ipb_table report_center">
+        <tbody>
+          <tr class="header">
+  					<th scope="col">Uid</th>
+  					<th scope="col">Użyty przez</th>
+  					<th scope="col">Data</th>
+  				</tr>
+          <foreach loop="$lastSms as $row">
+            <tr class="{parse striping="row"}">
+              <td>{$row['code_uid']}</td>
+              <td>{$row['code_owner']}</td>
+              <td>{parse date="$row['code_date']" format="short"}</td>
+              </td>
+            </tr>
+          </foreach>
+        </tbody>
+      </table>
+    </div>
+    <br />
+    <h4 class="maintitle">Zakupy skinów SMS</h4>
+    <div class="ipsBox_container">
+      <table class="ipb_table report_center">
+        <tbody>
+          <tr class="header">
+  					<th scope="col">Uid</th>
+  					<th scope="col">Użyty przez</th>
+  					<th scope="col">Data</th>
+  				</tr>
+          <foreach loop="$skinSms as $row">
+            <tr class="{parse striping="row"}">
+              <td>{$row['code_uid']}</td>
+              <td>{$row['member']}</td>
+              <td>{parse date="$row['time']" format="short"}</td>
+            </tr>
+          </foreach>
+        </tbody>
+      </table>
+    </div>
+
+
+  </div>
+</div>

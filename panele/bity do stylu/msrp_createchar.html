@@ -1,0 +1,114 @@
+<ips:template parameters="$man,$woman" />
+<script type='text/javascript' src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+<script type="text/javascript">
+jQuery.noConflict();
+</script>
+{parse template="characterTabs" group="msrp"}
+<div class="ipsVerticalTabbed_content ipsLayout_content ipsBox_container">
+<div class="ipsPad">
+<h2 class="ipsType_subtitle ipsSettings_pagetitle">Tworzenie nowej postaci</h2>
+<center>
+<div class="message error"> <b>Polskie imiona i nazwiska postaci są zabronione.</b></div>
+</center>
+<p align="center"><img src="public/icons/newchar.png" width="128px"></p>
+<br>
+<form action="{parse url="app=msrp&module=character&section=createchar" base="public"}" method="post">
+					<table class="ipb_table">
+						<tbody>
+							<tr>
+								<td width="42%" align="right">
+									<strong>
+										Imię
+									</strong>
+								</td>
+								<td align="left">
+									<input type="text" class="input_text" name="firstname" size="25" maxlength="24">
+								</td>
+							</tr>
+							<tr>
+								<td width="42%" align="right">
+									<strong>
+										Nazwisko
+									</strong>
+								</td>
+								<td align="left">
+									<input type="text" class="input_text" name="surname" size="25" maxlength="24">
+								</td>
+							</tr>
+							<tr>
+								<td align="right">
+									<strong>
+										Wiek postaci
+									</strong>
+								</td>
+								<td align="left">
+									<input type="text" class="input_text" name="age" size="25" maxlength="4" placeholder="od 14 do 90 lat">
+								</td>
+							</tr>
+							<tr>
+								<td align="right">
+									<strong>
+										Płeć
+									</strong>
+								</td>
+								<td align="left">
+									<select id="charsex" name="charsex" class="input_select" style="min-width: 158px;">
+										<option value="-1" selected="selected" disabled>
+											---
+										</option>
+										<option value="1">
+											Mężczyzna
+										</option>
+										<option value="0">
+											Kobieta
+										</option>
+									</select>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+					<div id="sMale" style="display:none;">
+						<foreach loop="$man as $row">
+							<img src="public/skins/Skin_{$row}.png"  class="skins" id="{$row}" style="margin-top: 3px;" />
+						</foreach>
+					</div>
+
+					<div id="sFemale" style="display:none;">
+						<foreach loop="$woman as $row">
+							<img src="public/skins/Skin_{$row}.png"  class="skins" id="{$row}" style="margin-top: 3px;" />
+						</foreach>
+					</div>
+
+					<input type="hidden" name="skin" id="sid" value=""><br />
+					<div align="center">
+						<input type='submit' name='createChar' class='input_submit' value='Stwórz nową postać' />
+						<br><br>
+					</div>
+			</div>
+		</div>
+
+	</form>
+	<script type="text/javascript">
+	jQuery(".skins").click( function ()
+	{
+		if( jQuery("#sid").val() != jQuery(this).attr("id"))
+		{
+			jQuery(".skins").fadeTo("fast", 0.33);
+			jQuery(this).fadeTo("fast", 1);
+			jQuery("#sid").val( jQuery(this).attr("id") );
+		}
+		else
+		{
+			jQuery(".skins").fadeTo("slow", 1);
+			jQuery("#sid").val("");
+		}
+	});
+
+	jQuery("#charsex").change( function ()
+	{
+		if(jQuery(this).val() == '1')
+		{ jQuery("#sMale").show("slow"); jQuery("#sFemale").hide("slow"); }
+		else if (jQuery(this).val() == '0')
+		{ jQuery("#sFemale").show("slow"); jQuery("#sMale").hide("slow"); }
+		else { jQuery("#sMale").hide("slow"); jQuery("#sFemale").hide("slow"); } });
+		</script>

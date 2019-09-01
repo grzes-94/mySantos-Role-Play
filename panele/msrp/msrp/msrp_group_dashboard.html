@@ -1,0 +1,146 @@
+<ips:template parameters="$information,$vehicles" />
+{parse striping="fetchVehicles" classes="row2,row1"}
+{parse striping="fetchRows" classes="row2,row1"}
+<div class="maintitle ipsFilterbar clearfix">
+<ul class="ipsList_inline">
+{parse template="groupTabs" group="msrp"}
+</ul>
+</div>
+<div class="ipsVerticalTabbed_content ipsLayout_content ipsBox_container">
+<div class="ipsPad">
+<br />
+<table width="100%;" class="ipb_table report_center">
+<tbody>
+<tr class="header">
+<td scope="col" style="font-weight: bold;" align="center" colspan="2">
+Informacje o grupie
+</td>
+</tr>
+<tr class="{parse striping="fetchRows"}">
+							<td width="30%" style="padding-left: 10%" > Identyfikator </td>
+							<td style="padding-left: 15%">
+								{$information['UID']}
+							</td>
+						</tr>
+						<tr class="{parse striping="fetchRows"}">
+							<td width="30%" style="padding-left: 10%"> Nazwa </td>
+							<td style="padding-left: 15%">
+								{$information['name']}
+							</td>
+						</tr>
+						<tr class="{parse striping="fetchRows"}">
+							<td width="30%" style="padding-left: 10%"> Tag grupy </td>
+							<td style="padding-left: 15%">
+								<if test="$information['tag']">
+									{$information['tag']}
+									<else />
+									--
+								</if>
+							</td>
+						</tr class="{parse striping="fetchRows"}">
+						<tr>
+							<td width="30%" style="padding-left: 10%"> Typ grupy </td>
+							<td style="padding-left: 15%">
+								{$information['typename']}
+							</td>
+						</tr>
+						<tr class="{parse striping="fetchRows"}">
+							<td width="30%" style="padding-left: 10%"> Stan konta </td>
+							<td style="padding-left: 15%">
+								<span style="font-weight: bold; color: green;">$</span>
+								{$information['cash']}
+							</td>
+						</tr>
+						<tr class="{parse striping="fetchRows"}">
+							<td width="30%" style="padding-left: 10%"> Konto pracownicze </td>
+							<td style="padding-left: 15%">
+								<span style="font-weight: bold; color: green;">$</span>
+								{$information['salary_account']}
+							</td>
+						</tr>
+						<tr class="{parse striping="fetchRows"}">
+							<td width="30%" style="padding-left: 10%"> Dotacja </td>
+							<td style="padding-left: 15%">
+								<span style="font-weight: bold; color: green;">$</span>
+								{$information['grant']}
+							</td>
+						</tr>
+						<if test="$information['isbusiness']">
+							<tr class="{parse striping="fetchRows"}">
+								<td width="30%" style="padding-left: 10%"> Biznes zarejestrowany </td>
+								<td style="padding-left: 15%">
+									<if test="$information['registered']">
+										<span style="color: green;">Tak</span>
+										<else />
+											<span style="color: red;">Nie</span>
+									</if>
+								</td>
+							</tr>
+						</if>
+					</tbody>
+				</table>
+				<if test="$information['type']==2">
+					<center>
+						<br />
+						<a href="index.php?app=msrp&module=group&section=jaillogs&group={$this->request['group']}&character={$this->request['character']} " class="input_submit">
+							Logi przetrzymań
+						</a>
+
+						<a href="index.php?app=msrp&module=group&section=legalweapons&group={$this->request['group']}&character={$this->request['character']} " class="input_submit">
+							Logi wydanej broni
+						</a>
+
+						<a href="index.php?app=msrp&module=group&section=blockedvehicles&group={$this->request['group']}&character={$this->request['character']} " class="input_submit">
+							Pojazdy z blokadą
+						</a>
+					</center>
+				</if>
+				<br /><br />
+				<h3 class="maintitle"> Pojazdy </h3>
+				<table class="ipb_table report_center">
+					<tbody>
+						<tr class="header">
+
+							<th scope="col">Pojazd</th>
+							<th scope="col">UID</th>
+							<th scope="col">Model</th>
+							<th scope="col">Przebieg</th>
+							<th scope="col">Paliwo</th>
+							<th scope="col">Ostatni kierowca</th>
+							<th scope="col">Rejestracja</th>
+							<th scope="col">Kolor 1</th>
+							<th scope="col">Kolor 2</th>
+							<th scope="col">Stan</th>
+						</tr>
+						<if test="count( $vehicles )">
+							<foreach loop="$vehicles as $row">
+
+
+								<tr class="{parse striping="fetchVehicles"}">
+									<td> <img src="public/vehicles/Vehicle_{$row['model']}.jpg"  height="50px"></td>
+										<td> {$row['UID']} </td>
+										<td> {$row['modelname']} </td>
+										<td> {$row['distance']} km</td>
+										<td> {$row['fuel']}</td>
+										<td > {$row['last_driver']}</td>
+										<td> <if test="$row['register'] == _"><div class="xcxzczx" style="color:red;">Brak</div><else /><div class="xcxzczx" style="color:green;">{$row['register']}</div></if> </td>
+										<td><div data-tooltip="{$row['color_1']}"><img src="public/colors/{$row['color1']}.png" alt="" style="height:30px; width:30px;border-radius: 20px; -webkit-border-radius: 20px; -moz-border-radius: 20px;"></div>
+										</td>
+
+											<td><div data-tooltip="{$row['color_2']}"><img src="public/colors/{$row['color2']}.png" alt="" style="height:30px; width:30px;border-radius: 20px; -webkit-border-radius: 20px; -moz-border-radius: 20px;"></div>
+												<td> {$row['hp']} HP</td>
+											</tr>
+
+
+										</foreach>
+										<else />
+										<tr>
+											<td colspan="4">
+												Brak pojazdów w grupie.
+											</td>
+										</tr>
+									</if>
+								</tbody>
+							</table>
+					</div>
+				</div>

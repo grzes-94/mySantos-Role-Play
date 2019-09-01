@@ -1,0 +1,92 @@
+<ips:template parameters="$row" />
+<php>
+$SQL = $this->DB->query('SELECT * FROM `fc_characters` WHERE `global_uid` = '.$row['owner_app'].' AND `block` = 0');
+$licznik = $this->DB->getTotalRows( $SQL );
+$SQL1 = $this->DB->query('SELECT * FROM `fc_characters` WHERE `global_uid` = '.$row['owner_app'].' AND `block` = 1024');
+$licznik1 = $this->DB->getTotalRows( $SQL1 );
+$SQL2 = $this->DB->query('SELECT * FROM `fc_penalty` WHERE `uid` = '.$row['owner_app'].' AND `penalty_type` <> 9');
+$licznik2 = $this->DB->getTotalRows( $SQL2 );
+
+$SQL3 = $this->DB->query('SELECT * FROM `fc_penalty` WHERE `uid` = '.$row['owner_app'].' AND `penalty_type` = 5');
+$licznik3 = $this->DB->getTotalRows( $SQL3 );
+
+$SQL4 = $this->DB->query('SELECT * FROM `msrp_applications` WHERE `status` = 1');
+$licznik4 = $this->DB->getTotalRows( $SQL4 );
+
+$SQL5 = $this->DB->query('SELECT * FROM `msrp_applications` WHERE `status` = 2');
+$licznik5 = $this->DB->getTotalRows( $SQL5 );
+
+$SQL6 = $this->DB->query('SELECT * FROM `msrp_applications` WHERE `status` IN (3,4)');
+$licznik6 = $this->DB->getTotalRows( $SQL6 );
+
+$this->DB->query('SELECT * FROM `msrp_questions` WHERE `uid` = '.$row['q1'].'');
+$q1 = $this->DB->fetch();
+
+$this->DB->query('SELECT * FROM `msrp_questions` WHERE `uid` = '.$row['q2'].'');
+$q2 = $this->DB->fetch();
+
+$this->DB->query('SELECT * FROM `msrp_questions` WHERE `uid` = '.$row['q3'].'');
+$q3 = $this->DB->fetch();
+
+$this->DB->query('SELECT * FROM `msrp_questions` WHERE `uid` = '.$row['q4'].'');
+$q4 = $this->DB->fetch();
+
+$this->DB->query('SELECT * FROM `msrp_questions` WHERE `uid` = '.$row['q5'].'');
+$q5 = $this->DB->fetch();
+
+$this->DB->query('SELECT * FROM `fc_characters` WHERE `player_uid` = '.$row['pid'].'');
+$player = $this->DB->fetch();
+
+$member = IPSMember::load( $row['owner_app'] );
+</php>
+<div class="maintitle ipsFilterbar clear clearfix">
+	<ul class="ipsList_inline left">
+		{parse template="adminTabs" group="msrp"}
+
+	</ul>
+</div>
+                <div class="ipsVerticalTabbed_content ipsLayout_content ipsBox_container">
+                        <div class="ipsPad">
+                                   <div class="ipsVerticalTabbed_content ipsLayout_content gamehubMainContent">
+<h3 class="maintitle">Biografia użytkownika</h3>
+
+<fieldset class='submit'><strong>Postać: {$player['name']}</fieldset>
+<br /><center>{$row['a1']}</center><br />
+
+<form method="post" action="index.php?app=msrp&module=admin&section=app&uid={$row['a_uid']}">
+<input type="hidden" name="uids" value="{$row['a_uid']}" />
+<div style="float: right;">{$pagination}</div><br /><br /><br />
+<div style="width: 50%; height: auto; float: left; margin: 0 auto;">
+<h3 class="maintitle" style="text-align: center;">Informacja dla użytkownika</h3>
+<div class="ipsPad">
+<textarea rows="4" name="note" cols="50" style="margin: 2px; height: 203px; width: 460px;">Wprowadź notkę informacyjną...</textarea>
+<fieldset class="submit" id="id_shownext_field">
+<select name="choice" style="min-width: 200px;">
+<option value="2">Zaakceptuj biografię</option>
+<option value="3">Odrzuć biografię</option>
+<option value="4">Zablokuj biografię</option>
+</select>
+<input type="submit" class="input_submit" name="submit" value="Wykonaj" />
+</fieldset>
+</div>
+</div>
+</form>
+
+<div width: 50%; background: #F7FBFC; float: left;">
+<h3 class="maintitle" style="text-align: center;">Informacje dodatkowe</h3>
+<div class="ipsPad"><span style="border-radius: 4px;color: #000;padding: 5px;font-size: 13px;line-height: 140%;font-family: monospace !important;-webkit-border-radius: 4px;">
+<p><font size="5"><center>Użytkownik: {$member['members_display_name']}</center></font></p><br />
+<p>Użytkownik posiada <font color="green"><b>{$licznik}</b></font> postaci zaakceptowanych, oraz <font color="orange"><b>{$licznik1}</b></font> oczekujących.</p>
+<p>Na koncie znajduje się <font color="red"><b>{$licznik2}</b></font> kar i <font color="green"><b>{$licznik3}</b></font> pochwał.</p>
+<p>Data wysłania: <b>{parse date="$row['dateline']" format="short"}</b></p>
+<p>Identyfikator: <b>{$row['a_uid']}</b></p>
+<br /><br /><br />
+<font color="darkorange">Oczekujące biografie:</font> {$licznik4}<br />
+<font color="darkgreen">Zaakceptowane biografie:</font> {$licznik5}<br />
+<font color="darkred">Odrzucone biografie:</font> {$licznik6}
+</span></div>
+</div>
+
+		</div>
+	</div>
+</div>

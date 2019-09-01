@@ -1,0 +1,683 @@
+/*----------------------------------------------------------------------------*-
+					=====================================
+					Y Sever Includes - Language Text Core
+					=====================================
+Description:
+	Provides interfaces for displaying text from anywhere by way of native like
+	functions using text indexes rather than text.  Due to a compile problem a
+	number of the stock functions should be static but can't be.
+Legal:
+	Copyright (C) 2007 Alex "Y_Less" Cole
+
+	This program is free software; you can redistribute it and/or
+	modify it under the terms of the GNU General Public License
+	as published by the Free Software Foundation; either version 2
+	of the License, or (at your option) any later version.
+
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with this program; if not, write to the Free Software
+	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+	MA 02110-1301, USA.
+Version:
+	0.1
+Changelog:
+	02/05/07:
+		Added YSI_ prefix to all globals.
+	23/03/07:
+		First version.
+Functions:
+	Public:
+		Text_ResetAll - Resets the entire text system.
+		Text_NewLanguage - Sets up to parse a new language.
+		Text_Parse - Sorts loaded text into a binary tree.
+	Core:
+		-
+	Stock:
+		Text_FindTextPointers - Should be static but can't be :(.
+		Text_AddToBuffer - Saves all passed text for processing.
+		Text_GetTextFromIndex - Gets text from an array pointer and language.
+	Static:
+		Text_AddText - Adds text to the tree after sorting.
+	Inline:
+		Text_Text - Constructor - Calls Text_ResetAll.
+		Text_SetLangPointer - Sets the pointer for a language to a position.
+		Text_ResetLangPointers - Resets all the pointers for one language.
+		Text_GetPlayerLanguage - Gets a players language.
+		Text_GetText - Gets text from an identifier and language.
+		Text_GetPlayerText - Gets text from an identifier and playerid.
+	API:
+		SendClientMessage2 - SendClientMessage with an identifier instead.
+		GameTextForPlayer2 - GameTextForPlayer with an identifier.
+		SendClientMessageToAll2 - SendClientMessageToAll replacement.
+		GameTextForAll2 - GameTextForAll replacement.
+		format2 - Formats a message based on an identifier and language.
+		SendClientMessageToAll2Format - Sends formatted language messages.
+		GameTextForAll2Format - Sends formatted language messages.
+		SendClientMessage2Format - Sends a formatted message.
+		GameTextForPlayer2Format - Sends a formatted message.
+Callbacks:
+	-
+Definitions:
+	MAX_TEXT_NAME - Maximum length of a text identifier.
+	MAX_TEXT_ENTRY - Maximum length of a text string.
+	TEXT_NO_TEXT - Value for no text for that language.
+	TEXT_NO_POINTERS - Value for no text found.
+	TEXT_TYPE_CLIENT - Flag for sending a client formatted message.
+	TEXT_TYPE_GAME - Flag for sending a game text formatted message.
+Enums:
+	E_TEXT_POINTERS - Structure of the language pointer array.
+Macros:
+	Text_RegisterTag - Placed as a function, calls Text_AddToBuffer for tags.
+Tags:
+	-
+Variables:
+	Global:
+		-
+	Static:
+		YSI_g_sTextTable - Array of all text entries.
+		YSI_g_sNameTable - Array of all text names and language pointers.
+		YSI_g_sSearchTree - Binary tree of text hashes.
+		YSI_g_sTextInited - Flag for text binary sorted.
+		YSI_g_sBufferIndex - Index of next text slot for the current language.
+		YSI_g_sTextCount - Count of largest number of texts in one language.
+		YSI_g_sBufferLang - Current language being loaded.
+Commands:
+	-
+Compile options:
+	-
+Operators:
+	-
+-*----------------------------------------------------------------------------*/
+
+#if defined MAX_INI_ENTRY_NAME
+	#define MAX_TEXT_NAME		MAX_INI_ENTRY_NAME
+#else
+	#define MAX_TEXT_NAME		32
+#endif
+#if defined MAX_INI_ENTRY_TEXT
+	#define MAX_TEXT_ENTRY		MAX_INI_ENTRY_TEXT
+#else
+	#define MAX_TEXT_ENTRY		80
+#endif
+
+#define TEXT_NO_TEXT		-1
+#define TEXT_NO_POINTERS	BINTREE_NOT_FOUND
+
+#define TEXT_TYPE_CLIENT	0x10000000
+#define TEXT_TYPE_GAME		0x20000000
+
+forward Text_ResetAll();
+forward Text_NewLanguage(Language:languageID);
+forward Text_Parse();
+
+enum E_TEXT_POINTERS
+{
+	E_TEXT_POINTERS_NAME[MAX_TEXT_NAME],
+	E_TEXT_POINTERS_POINTER[MAX_LANGUAGES]
+}
+
+static
+	YSI_g_sTextTable[MAX_LANGUAGES][MAX_TEXT][MAX_TEXT_ENTRY],
+	YSI_g_sNameTable[MAX_TEXT][E_TEXT_POINTERS],
+	Bintree:YSI_g_sSearchTree[MAX_TEXT][E_BINTREE_TREE],
+	YSI_g_sTextInited,
+	YSI_g_sBufferIndex,
+	YSI_g_sLangBuffer[MAX_LANGUAGES],
+	YSI_g_sTextCount,
+	Language:YSI_g_sBufferLang;
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Text_RegisterTag
+Params:
+	tag[] - Text group to read
+Return:
+	-
+Notes:
+	Not a real function, just forwards required tags to Text_AddToBuffer.
+-*----------------------------------------------------------------------------*/
+
+#define Text_RegisterTag(%1) \
+	forward Text_Tag_%1(identifier[], text[]); \
+	public Text_Tag_%1(identifier[], text[]) Text_AddToBuffer(identifier, text)
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Text_Text
+Params:
+	-
+Return:
+	-
+Notes:
+	Initalises all the arrays and datas.
+-*----------------------------------------------------------------------------*/
+
+#define Text_Text() \
+	Text_ResetAll()
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Text_SetLangPointer
+Params:
+	index - The index of the text pointer you want to setup.
+	Language:languageid - The index of the language you want to setup for.
+	pointer - The pointer to the text for this identifier in this language.
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+#define Text_SetLangPointer(%1,%2,%3) \
+	YSI_g_sNameTable[%1][E_TEXT_POINTERS_POINTER][%2] = %3
+
+/*----------------------------------------------------------------------------*-
+Function:
+	FindTextPointers
+Params:
+	data[] - The textual identifier of the string we want to find.
+Return:
+	A pointer to the array of pointers to get the language specific text.
+	TEXT_NO_POINTERS on fail.
+Notes:
+	Finds a matching hash, then checks the text too for collisions.
+-*----------------------------------------------------------------------------*/
+
+stock Text_FindTextPointers(data[])
+{
+	new
+		leaf,
+		pointer,
+		value = bernstein(data);
+	while ((pointer = Bintree_FindValue(YSI_g_sSearchTree, value, leaf)) != BINTREE_NOT_FOUND)
+	{
+		if (!strcmp(YSI_g_sNameTable[pointer][E_TEXT_POINTERS_NAME], data)) return pointer;
+	}
+	return TEXT_NO_POINTERS;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Text_ResetLangPointers
+Params:
+	Language:languageID - Language to reset.
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+#define Text_ResetLangPointers(%1) \
+	for (new Language:_languagesToReset_; _languagesToReset_ < MAX_LANGUAGES; _languagesToReset_++) Text_SetLangPointer((%1), _languagesToReset_, TEXT_NO_TEXT)
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Text_AddToBuffer
+Params:
+	Language:languageID - Language index.
+	identifier[] - The textual identifier of the string we're saving.
+	text[] - The text we're saving.
+Return:
+	-
+Notes:
+	This function saves the passed data into the arrays.  The text is just
+	dumped in anywhere for speed, the identifier MAY be dumped if the tree
+	doesn't exist yet, otherwise the pointers are just updated for the new
+	text.
+-*----------------------------------------------------------------------------*/
+
+stock Text_AddToBuffer(identifier[], text[])
+{
+	if (YSI_g_sTextCount >= MAX_TEXT) return;
+	new
+		pos;
+	if (YSI_g_sTextInited)
+	{
+		if ((pos = Text_FindTextPointers(identifier)) != TEXT_NO_POINTERS) Text_SetLangPointer(pos, YSI_g_sBufferLang, YSI_g_sBufferIndex);
+		else
+		{
+			Text_AddText(identifier, YSI_g_sTextCount);
+			Text_ResetLangPointers(YSI_g_sTextCount);
+			Text_SetLangPointer(YSI_g_sTextCount, YSI_g_sBufferLang, YSI_g_sBufferIndex);
+			YSI_g_sTextCount++;
+		}
+	}
+	else
+	{
+		Text_ResetLangPointers(YSI_g_sBufferIndex);
+		Text_SetLangPointer(YSI_g_sBufferIndex, YSI_g_sBufferLang, YSI_g_sBufferIndex);
+		strcpy(YSI_g_sNameTable[YSI_g_sBufferIndex][E_TEXT_POINTERS_NAME], identifier, MAX_TEXT_ENTRY);
+		YSI_g_sTextCount++;
+	}
+	strcpy(YSI_g_sTextTable[YSI_g_sBufferLang][YSI_g_sBufferIndex], text, MAX_TEXT_ENTRY);
+	YSI_g_sBufferIndex++;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Text_AddText
+Params:
+	identifier[] - Text name to add.
+	index - Position in the pointer array.
+Return:
+	-
+Notes:
+	Adds an item to the search tree after sorting.
+-*----------------------------------------------------------------------------*/
+
+static Text_AddText(identifier[], index)
+{
+	new
+		input[E_BINTREE_INPUT];
+	input[E_BINTREE_INPUT_VALUE] = bernstein(identifier);
+	input[E_BINTREE_INPUT_POINTER] = index;
+	Bintree_Add(YSI_g_sSearchTree, input, index, sizeof (YSI_g_sSearchTree));
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Text_ResetAll
+Params:
+	-
+Return:
+	-
+Notes:
+	Resets all the data, including trees.  Called from the language loader.
+-*----------------------------------------------------------------------------*/
+
+public Text_ResetAll()
+{
+	YSI_g_sTextInited = 0;
+	YSI_g_sTextCount = 0;
+	Bintree_Reset(YSI_g_sSearchTree);
+	return 1;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Text_NewLanguage
+Params:
+	-
+Return:
+	-
+Notes:
+	Sets everything up to input a new language into the system (not hard tbh).
+-*----------------------------------------------------------------------------*/
+
+public Text_NewLanguage(Language:languageID)
+{
+	YSI_g_sBufferIndex = YSI_g_sLangBuffer[languageID];
+	YSI_g_sBufferLang = languageID;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Text_Parse
+Params:
+	-
+Return:
+	-
+Notes:
+	This function sorts the data in the buffer (entered since Text_NewLanguage
+	was last called), into the binary tree system.  The tree system is:
+	
+	Bintree:YSI_g_sSearchTree[MAX_TEXT][E_BINTREE_TREE]
+	This contains the hashes of the text identifier for fast searching
+	
+	YSI_g_sNameTable[MAX_TEXT][E_TEXT_POINTERS]
+	This is indexed by YSI_g_sSearchTree, it contains the textual identifier for
+	collision checking and the pointers for all the languages
+	
+	YSI_g_sTextTable[MAX_LANGUAGES][MAX_TEXT][MAX_TEXT_ENTRY]
+	This contains all the entries for each language in no particular order,
+	they're saved as they're sent.  There are multiple indexes in YSI_g_sNameTable
+	into this, depending on the language.
+	
+	All this is determined here.  If a language has been loaded already the
+	existing binary tree is used and data inserted at read, otherwise it is
+	generated here.
+	
+	This setup allows very fast and safe loading of text strings for display,
+	flexibility in that adding new text and using it is very simple, text
+	entries only exist once in the system, even identifiers, through careful
+	data layout planning and means it is very simple to load languages after
+	the first has been loaded and the tree generated.
+-*----------------------------------------------------------------------------*/
+
+public Text_Parse()
+{
+	if (!YSI_g_sTextInited)
+	{
+		new
+			data[MAX_TEXT][E_BINTREE_INPUT];
+		for (new i = 0; i < YSI_g_sBufferIndex; i++)
+		{
+			data[i][E_BINTREE_INPUT_VALUE] = bernstein(YSI_g_sNameTable[i][E_TEXT_POINTERS_NAME]);
+			data[i][E_BINTREE_INPUT_POINTER] = i;
+		}
+		Bintree_Generate(YSI_g_sSearchTree, data, YSI_g_sBufferIndex);
+		YSI_g_sTextInited = 1;
+		YSI_g_sTextCount = YSI_g_sBufferIndex;
+	}
+	YSI_g_sLangBuffer[YSI_g_sBufferLang] = YSI_g_sBufferIndex;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Text_GetPlayerLanguage
+Params:
+	playerid
+Return:
+	Language:languageID
+Notes:
+	Wrapper for the possibly remote Langs_ function.
+-*----------------------------------------------------------------------------*/
+
+#if defined _LOCAL
+	#define Text_GetPlayerLanguage(%1) \
+		Player_GetPlayerLanguage((%1))
+#else
+	#define Text_GetPlayerLanguage(%1) \
+		Language:CallRemoteFunction("Player_GetPlayerLanguage", "i", (%1))
+#endif
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Text_GetText
+Params:
+	identifier[] - Teh string to find the text for.
+	Language:languageID - The language to get the text for
+Return:
+	Text_GetTextFromIndex
+Notes:
+	This gives out stupid errors when implemented as a function despite the
+	fact the compiler is obviously lying (there is only one return type, how
+	can it possibly be inconsistent between array and non-array)!?
+-*----------------------------------------------------------------------------*/
+
+#define Text_GetText(%1,%2) \
+	Text_GetTextFromIndex(Text_FindTextPointers((%1)), (%2))
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Text_GetPlayerText
+Params:
+	identifier[] - The string to find the text for.
+	playerid - The player to get the language for.
+Return:
+	Text_GetText
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+#define Text_GetPlayerText(%1,%2) \
+	Text_GetText((%1), Text_GetPlayerLanguage((%2)))
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Text_GetTextFromIndex
+Params:
+	index - The pointer in the languages array of the text entry.
+	Language:languageID - The language we want to get the text for.
+Return:
+	text[] or error message.
+Notes:
+	This is where all the pointers are checked before being used, if any are
+	wrong (i.e. invalid) an error message is returned, otherwise the required
+	string is returned.
+-*----------------------------------------------------------------------------*/
+
+stock Text_GetTextFromIndex(index, Language:languageID)
+{
+	new
+		ret[MAX_TEXT_ENTRY] = "*** Internal Error! No text or errors found";
+	if (index == TEXT_NO_POINTERS) return ret;
+	index = YSI_g_sNameTable[index][E_TEXT_POINTERS_POINTER][languageID];
+	if (index == TEXT_NO_TEXT) return ret;
+	return YSI_g_sTextTable[languageID][index];
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	SendClientMessage2
+Params:
+	playerid - Player to send to.
+	color - Color of message.
+	identifier[] - Text identifier to send.
+Return:
+	SendClientMessage
+Notes:
+	Wrapper for SendClientMessage using identifiers not text.
+-*----------------------------------------------------------------------------*/
+
+stock SendClientMessage2(playerid, color, identifier[])
+{
+	return SendClientMessage(playerid, color, Text_GetPlayerText(identifier, playerid));
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	SendClientMessageToAll2
+Params:
+	color - Color of message.
+	identifier[] - Identifier of text to send.
+Return:
+	-
+Notes:
+	Wrapper for SendClientMessageToAll.  Finds string language pointers once
+	then gets each players personal language message.
+-*----------------------------------------------------------------------------*/
+
+stock SendClientMessageToAll2(color, identifier[])
+{
+	new
+		messageid;
+	if ((messageid = Text_FindTextPointers(identifier)) == TEXT_NO_POINTERS) return;
+	for (new i = 0; i < MAX_PLAYERS; i++) if (IsPlayerConnected(i)) SendClientMessage(i, color, Text_GetTextFromIndex(messageid, Text_GetPlayerLanguage(i)));
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	GameTextForPlayer2
+Params:
+	playerid - Player to send to.
+	identifier[] - Text identifier to use.
+	time - Time to display for.
+	style - Style to display in.
+Return:
+	GameTextForPlayer
+Notes:
+	See SendClientMessage2
+-*----------------------------------------------------------------------------*/
+
+stock GameTextForPlayer2(playerid, identifier[], time, style)
+{
+	return GameTextForPlayer(playerid, Text_GetPlayerText(identifier, playerid), time, style)
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	GameTextForAll2
+Params:
+	identifier[] - Text identifier to use.
+	time - Time to display for.
+	style - Style to display in.
+Return:
+	-
+Notes:
+	See SendClientMessageToAll2
+-*----------------------------------------------------------------------------*/
+
+stock GameTextForAll2(identifier[], time, style)
+{
+	new
+		messageid;
+	if ((messageid = Text_FindTextPointers(identifier)) == TEXT_NO_POINTERS) return;
+	for (new i = 0; i < MAX_PLAYERS; i++) if (IsPlayerConnected(i)) GameTextForPlayer(i, Text_GetTextFromIndex(messageid, Text_GetPlayerLanguage(i)), time, style);
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	GameTextForPlayers2
+Params:
+	identifier[] - Text identifier to use.
+	time - Time to display for.
+	style - Style to display in.
+	Bit:players[] - Bit array of players to send to.
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock GameTextForPlayers2(Bit:players[], identifier[], time, style)
+{
+	new
+		messageid;
+	if ((messageid = Text_FindTextPointers(identifier)) == TEXT_NO_POINTERS) return;
+	for (new i = 0; i < MAX_PLAYERS; i++) if (Bit_Get(players, i, PLAYER_BIT_ARRAY) && IsPlayerConnected(i)) GameTextForPlayer(i, Text_GetTextFromIndex(messageid, Text_GetPlayerLanguage(i)), time, style);
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	format2
+Params:
+	dest[]
+	size
+	Language:languageID
+	identifier[]
+	...
+Return:
+	format
+Notes:
+	Formats the string according to one language's string, no use for
+	multiple player situations (see: SendClientMessageToAllFormat and
+	GameTextForAllFormat).
+	
+	The format functions have to be defines unfortunately.
+-*----------------------------------------------------------------------------*/
+
+#define format2(%1,%2,%3,%4,%5) \
+	format((%1), (%2), Text_GetText((%4), (%3)), %5)
+
+/*----------------------------------------------------------------------------*-
+Function:
+	SendClientMessageToAll2Format
+Params:
+	color
+	identifier[]
+	...
+Return:
+	-
+Notes:
+	These 4 functions are just wrappers for the generic format-like function
+	Format_SendFormattedText.
+-*----------------------------------------------------------------------------*/
+
+#define SendClientMessageToAll2Format(%1,%2,%3) \
+	do \
+	{ \
+		new \
+			Bit:GTFA2Fbits[PLAYER_BIT_ARRAY]; \
+		Bit_SetAll(GTFA2Fbits, 1); \
+		Format_SendFormattedText(GTFA2Fbits, TEXT_TYPE_CLIENT, (%1), (%2), %3); \
+	} \
+	while (FALSE)
+
+/*----------------------------------------------------------------------------*-
+Function:
+	GameTextForAll2Format
+Params:
+	identifier[]
+	time
+	style
+	...
+Return:
+	-
+Notes:
+	This has to be a combination of inline and function calling.  The function
+	requires a bit array to send the data to the correct players which needs
+	setting up first and the calling has to be inline for the format parameters.
+-*----------------------------------------------------------------------------*/
+
+#define GameTextForAll2Format(%1,%2,%3,%4) \
+	do \
+	{ \
+		new \
+			Bit:GTFA2Fbits[PLAYER_BIT_ARRAY]; \
+		Bit_SetAll(GTFA2Fbits, 1); \
+		Format_SendFormattedText(GTFA2Fbits, (%3) | TEXT_TYPE_GAME, (%2), (%1), %4); \
+	} \
+	while (FALSE)
+
+/*----------------------------------------------------------------------------*-
+Function:
+	SendClientMessage2Format
+Params:
+	playerid
+	color
+	identifier[]
+	...
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+#define SendClientMessage2Format(%1,%2,%3,%4) \
+	do \
+	{ \
+		new \
+			Bit:GTFA2Fbits[PLAYER_BIT_ARRAY]; \
+		Bit_Set(GTFA2Fbits, (%1), 1); \
+		Format_SendFormattedText(GTFA2Fbits, TEXT_TYPE_CLIENT, (%2), (%3), %4); \
+	} \
+	while (FALSE)
+
+/*----------------------------------------------------------------------------*-
+Function:
+	GameTextForPlayer2Format
+Params:
+	playerid
+	identifier[]
+	time
+	style
+	...
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+#define GameTextForPlayer2Format(%1,%2,%3,%4,%4) \
+	do \
+	{ \
+		new \
+			Bit:GTFA2Fbits[PLAYER_BIT_ARRAY]; \
+		Bit_Set(GTFA2Fbits, (%1), 1); \
+		Format_SendFormattedText(GTFA2Fbits, (%4) | TEXT_TYPE_GAME, (%3), (%2), %5); \
+	} \
+	while (FALSE)
+
+/*----------------------------------------------------------------------------*-
+Function:
+	GameTextForPlayers2Format
+Params:
+	Bit:players[] - Players to send to.
+	identifier[]
+	time
+	style
+	...
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+#define GameTextForPlayers2Format(%1,%2,%3,%4,%5) \
+	Format_SendFormattedText((%1), (%4) | TEXT_TYPE_GAME, (%3), (%2), %5)

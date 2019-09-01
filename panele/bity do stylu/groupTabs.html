@@ -1,0 +1,30 @@
+<li <if test="$this->request['section'] == 'dashboard'">class="active"</if>>
+	<a href="{parse url="module=group&section=dashboard&group={$this->request['group']}&character={$this->request['character']}" base="publicWithApp"}">
+		Informacje
+	</a>
+</li>
+<li <if test="$this->request['section'] == 'members'">class="active"</if>>
+	<a href="{parse url="module=group&section=members&group={$this->request['group']}&character={$this->request['character']}" base="publicWithApp"}">
+		Pracownicy
+	</a>
+</li>
+<li <if test="$this->request['section'] == 'perms'">class="active"</if>>
+	<a href="{parse url="module=group&section=perms&group={$this->request['group']}&character={$this->request['character']}" base="publicWithApp"}">
+		Uprawnienia
+	</a>
+</li>
+<li <if test="$this->request['section'] == 'doors'">class="active"</if> >
+	<a href="{parse url="module=group&section=doors&group={$this->request['group']}&character={$this->request['character']}" base="publicWithApp"}">
+		Drzwi
+	</a>
+</li>
+<li <if test="$this->request['section'] == 'logs'">class="active"</if> >
+	<a href="{parse url="module=group&section=logs&group={$this->request['group']}&character={$this->request['character']}" base="publicWithApp"}">
+		Logi
+	</a>
+</li>
+<li>
+	<a href="{parse url="module=group" base="publicWithApp"}">
+		Wyloguj
+	</a>
+</li>

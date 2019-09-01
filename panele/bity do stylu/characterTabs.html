@@ -1,0 +1,31 @@
+<div class="maintitle ipsFilterbar clearfix">
+  <ul class="ipsList_inline">
+    <li <if test="$this->request['module'] == 'character' && $this->request['section'] != 'logs'&& $this->request['section'] != 'search'">class="active"</if>
+      <a href="index.php?app=msrp&module=character" title="Lista postaci">Postacie</a>
+    </li>
+    <li <if test="$this->request['module'] == 'character' && $this->request['section'] == 'logs'">class="active"</if>>
+      <a href="index.php?app=msrp&module=character&section=logs" title="Lista postaci">Logi logowań</a>
+    </li>
+    <li <if test="$this->request['module'] == 'online'">class="active"</if>>
+      <a href="index.php?app=msrp&module=online" title="W grze">W grze</a>
+    </li>
+    <li <if test="$this->request['module'] == 'group'">class="active"</if>>
+      <a href="index.php?app=msrp&module=group" title="Grupy">Grupy</a>
+    </li>
+    <li <if test="$this->request['module'] == 'premium'">class="active"</if>>
+      <a href="index.php?app=msrp&module=premium" title="Konto Premium">Konto Premium</a>
+    </li>
+    <li <if test="$this->request['module'] == 'salon'">class="active"</if>>
+      <a href="index.php?app=msrp&module=salon" title="Salon pojazdów">Salon pojazdów</a>
+    </li>
+    <li <if test="$this->request['module'] == 'character' && $this->request['section'] == 'search'">class="active"</if>>
+      <a href="index.php?app=msrp&module=character&section=search" title="Wyszukiwarka postaci">Znajdź postać</a>
+    </li>
+    <if test="$this->memberData['member_group_id'] == 4 || $this->memberData['member_group_id'] == 7 || $this->memberData['member_group_id'] == 8 || $this->memberData['member_group_id'] == 11">
+       <li><a href="index.php?app=msrp&module=admin" title="Zaplecze">Zaplecze</a></li>
+    </if>
+    <if test="$this->memberData['panel_perm'] & 2">
+      <li><a href="index.php?app=msrp&module=gov" title="Panel rządowy">Panel rządowy</a></li>
+    </if>
+  </ul>
+</div>

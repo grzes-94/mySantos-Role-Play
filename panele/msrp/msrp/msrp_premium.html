@@ -1,0 +1,148 @@
+<ips:template parameters="$success, $premium_end" />
+{parse striping="fetchRows" classes="row1,row2"}
+{parse template="characterTabs" group="msrp"}
+<div class="ipsVerticalTabbed_content ipsLayout_content ipsBox_container">
+<div class="ipsPad">
+<if test="$success == -2">
+<div class="message error">Kod niepoprawny, upewnij się czy kod nie został użyty wcześniej.</div><br />
+</if>
+<if test="$success == -1">
+<div class="message error">Wprowadzony kod jest niepoprawny.</div><br />
+</if>
+<if test="$success == 1">
+<div class="message">Kod prawidłowy, konto premium zostało aktywowane.</div><br />
+</if>
+<if test="$premium_end > IPS_UNIX_TIME_NOW">
+<div class="message positive">
+<center>Twoje konto premium jest aktywne do: {parse date="$premium_end" format="SHORT" relative="false"}
+<br />
+Dziękujemy za wsparcie projektu!
+</center>
+</div>
+</if>
+<div class="ipsBox">
+<table class="ipb_table report_center">
+<tbody>
+<tr class="header">
+<th scope="col" class="short">Opcja</td>
+<th scope="col" class="short">Użytkownik</th>
+<th scope="col" class="short">Konto premium</th>
+</tr>
+<tr class="{parse striping="fetchRows"}">
+							<th scope="row">Score za godzinę gry</th>
+							<td class="short">10</td>
+							<td class="short">15</td>
+						</tr>
+						<tr class="{parse striping="fetchRows"}">
+							<th scope="row">Ilość zespawnowanych pojazdów</th>
+							<td class="short">1</td>
+							<td class="short">3</td>
+						</tr>
+						<tr class="{parse striping="fetchRows"}">
+							<th scope="row">Ilość obiektów doczepialnych</th>
+							<td class="short">3</td>
+							<td class="short">5</td>
+						</tr>
+						<tr class="{parse striping="fetchRows"}">
+							<th scope="row">Ilość posiadanych slotów na grupy</th>
+							<td class="short">3</td>
+							<td class="short">5</td>
+						</tr>
+						<tr class="{parse striping="fetchRows"}">
+							<th scope="row">Mozliwośc założenia nowej postaci od</th>
+							<td class="short">10h</td>
+							<td class="short">3h</td>
+						</tr>
+						<tr class="{parse striping="fetchRows"}">
+							<th scope="row">Możliwość ukrycia postaci</th>
+							<td class="short">Nie</td>
+							<td class="short">Tak</td>
+						</tr>
+						<tr class="{parse striping="fetchRows"}">
+							<th scope="row">Kolorowy opis postaci oraz pojazdu</th>
+							<td class="short">Nie</td>
+							<td class="short">Tak</td>
+						</tr>
+						<tr class="{parse striping="fetchRows"}">
+							<th scope="row">Wyróżniona ranga na forum</th>
+							<td class="short">Nie</td>
+							<td class="short">Tak</td>
+						</tr>
+						<tr class="{parse striping="fetchRows"}">
+							<th scope="row">Wyróżniony nick na liście graczy</th>
+							<td class="short">Nie</td>
+							<td class="short">Tak</td>
+						</tr>
+						<tr class="{parse striping="fetchRows"}">
+							<th scope="row">Własna, unikalna rejestracja pojazdu</th>
+							<td class="short">Nie</td>
+							<td class="short">Tak</td>
+						</tr>
+						<tr class="{parse striping="fetchRows"}">
+							<th scope="row">Dostęp do ukrytego działu</th>
+							<td class="short">Nie</td>
+							<td class="short">Tak</td>
+						</tr>
+						<tr class="{parse striping="fetchRows"}">
+							<th scope="row">Ukryte logi kar</th>
+							<td class="short">Nie</td>
+							<td class="short">Tak</td>
+						</tr>
+						<tr class="{parse striping="fetchRows"}">
+							<th scope="row">Trzycyfrowy numer telefonu (+ własna nazwa telefonu)</th>
+							<td class="short">Nie</td>
+							<td class="short">Tak</td>
+						</tr>
+						<tr class="{parse striping="fetchRows"}">
+							<th scope="row">Możliwość kliknięcia na gracza pod TAB (informacje o nim)</th>
+							<td class="short">Nie</td>
+							<td class="short">Tak</td>
+						</tr>
+						<tr class="{parse striping="fetchRows"}">
+							<th scope="row">Kolor pojazdu kupowanego w salonie</th>
+							<td class="short">Losowy</td>
+							<td class="short">Własny</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+			<br />
+			<div class="ipsBox" >
+
+
+				<fieldset class="ipsSettings_section">
+					<center>
+						<b>Zakup przez SMS</b><br />
+						Aby przedłuzyć konto premium o 30 dni wyslij SMS o treści: <b>HA.PREMIUM</b> pod numer: <b>79480</b><br />
+						Koszt SMS: <b>9 PLN netto / 11.07 PLN brutto</b>. Obsługiwane sieci wszystkich polskich operatorów.<br />
+						Reklamacje należy zgłaszać do <a href="index.php?showuser=1">{IPSMember::makeNameFormatted( Infinity,4 )}</a>.<br />
+						Płatności obsługuje:<br />
+						<a href="https://hotpay.pl/" target="_blank"><img src="https://hotpay.pl/assets/img/logo.png" style="height:20px" /></a>
+						<br /><br />
+						<font color=Red>Pamiętaj, aby zachować minimum 5 minut odstępu między kolejno wysłanymi smsami z tego samego numeru telefonu!</font><br /><br />
+						<form method="post">
+							<input type="text" name="smscode" class="input_text" size="15" placeholder="Otrzymany kod" maxlength="10" required> <br />
+
+							<input type="submit" style="margin-top: 2px;"class="ipsButton_secondary" name="smsactivate" size="15" value="Aktywuj">
+						</form>
+						<br /><br />
+						<b>Zakup przez przelew/PaySafeCard/PayPal</b><br />
+						Aby zakupić premium poprzez wpłatę/przelew na konto bankowe lub PaySafeCard/PayPal należy skontaktować się z <a href="index.php?showuser=1">{IPSMember::makeNameFormatted( Infinity,4)}</a> na PW w celu otrzymania danych.<br />
+						Koszt premium zakupionego w taki sposób wynosi 7zł za 30 dni.<br />
+						W przypadku płatności przez PaySafeCard zostaje odliczona prowizja w wysokości 14% kwoty.
+						<br /><br />
+						<b>Posiadam kod</b><br />
+						Kody premium są udostępniane przez administracje projektu w ramach wydarzeń na serwerze, jako nagroda za pomoc czy też po prostu jako "giveaway".<br /><br />
+						<form method="post">
+							<input type="text" name="code" class="input_text" size="15" placeholder="Kod premium" maxlength="12" required="reqired"> <br />
+
+							<input type="submit" style="margin-top: 2px;"class="ipsButton_secondary" name="codeactivate" size="15" value="Aktywuj">
+						</form>
+
+
+
+					</center>
+				</fieldset>
+			</div>
+		</div>
+	</div>

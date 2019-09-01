@@ -1,0 +1,819 @@
+/*----------------------------------------------------------------------------*-
+					==================================
+					Y Sever Includes - Properties Core
+					==================================
+Description:
+	Handles properties and other common features for some modes.
+Legal:
+	Copyright (C) 2007 Alex "Y_Less" Cole
+
+	This program is free software; you can redistribute it and/or
+	modify it under the terms of the GNU General Public License
+	as published by the Free Software Foundation; either version 2
+	of the License, or (at your option) any later version.
+
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with this program; if not, write to the Free Software
+	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+	MA 02110-1301, USA.
+Version:
+	0.1
+Changelog:
+	18/04/07:
+		First version.
+Functions:
+	Public:
+		-
+	Core:
+		-
+	Stock:
+		-
+	Static:
+		-
+	Inline:
+		-
+	API:
+		CreateProperty
+		CreateBank
+		CreateMoneyPoint
+		CreateAmmunation
+Callbacks:
+	-
+Definitions:
+	-
+Enums:
+	-
+Macros:
+	-
+Tags:
+	-
+Variables:
+	Global:
+		-
+	Static:
+		-
+Commands:
+	-
+Compile options:
+	-
+Operators:
+	-
+-*----------------------------------------------------------------------------*/
+
+/*
+PLAYER_BIT_ARRAY + MAX_PROP_NAME + 2 > 40
+	- 40 to store weapon data
+
+Price - lower 20 bits, max 1048575
+Ammo - upper 12 bits, max 4095
+*/
+
+#if defined MAX_PROP_NAME
+	#if MAX_PROP_NAME < (39 - PLAYER_BIT_ARRAY)
+		#undef MAX_PROP_NAME
+	#endif
+#endif
+
+#if !defined MAX_PROP_NAME
+	#define MAX_PROP_NAME (39 - PLAYER_BIT_ARRAY)
+#endif
+
+#if !defined MAX_PROPERTIES
+	#define MAX_PROPERTIES 256
+#endif
+
+#define NO_PROPERTY -1
+
+#define WEAPON_ARMOUR 100
+
+#define WEAPON_DATA_OFFSET (PLAYER_BIT_ARRAY - 2)
+
+#define WEAPON_DATA (((getarg(pos++) & 0xFFF) << 20) | (getarg(pos++) & 0xFFFFF))
+
+enum (<<= 1)
+{
+	e_PROP_WEAP_BRASSKNUCKLE = 1,
+	e_PROP_WEAP_GOLFCLUB,
+	e_PROP_WEAP_NIGHTSTICK,
+	e_PROP_WEAP_KNIFE,
+	e_PROP_WEAP_BASEBALLBAT,
+	e_PROP_WEAP_SHOVEL,
+	e_PROP_WEAP_POOLCUE,
+	e_PROP_WEAP_KATANA,
+	e_PROP_WEAP_CHAINSAW,
+	e_PROP_WEAP_DILDO1,
+	e_PROP_WEAP_DILDO2,
+	e_PROP_WEAP_VIBE1,
+	e_PROP_WEAP_VIBE2,
+	e_PROP_WEAP_FLOWERS,
+	e_PROP_WEAP_CANE,
+	e_PROP_WEAP_GRENADE,
+	e_PROP_WEAP_TEARGAS,
+	e_PROP_WEAP_MOLOTOV,
+	e_PROP_WEAP_ROCKET,
+	e_PROP_WEAP_ROCKET_HS,
+	e_PROP_WEAP_FREEFALL_BOMB,
+	e_PROP_WEAP_PISTOL,
+	e_PROP_WEAP_PISTOL_SILENCED,
+	e_PROP_WEAP_DESERT_EAGLE,
+	e_PROP_WEAP_SHOTGUN,
+	e_PROP_WEAP_SAWNOFF,
+	e_PROP_WEAP_SPAS12,
+	e_PROP_WEAP_MICRO_UZI,
+	e_PROP_WEAP_TEC9,
+	e_PROP_WEAP_MP5,
+	e_PROP_WEAP_AK47,
+	e_PROP_WEAP_M4
+}
+
+enum (<<= 1)
+{
+	e_PROP_WEAP_COUNTRY_RIFLE = 1,
+	e_PROP_WEAP_SINPER_RIFLE,
+	e_PROP_WEAP_RLAUNCHER,
+	e_PROP_WEAP_RLAUNCHER_HS,
+	e_PROP_WEAP_FTHROWER,
+	e_PROP_WEAP_MINIGUN,
+	e_PROP_WEAP_SATCHEL_CHARGE,
+	e_PROP_WEAP_DETONATOR,
+	e_PROP_WEAP_SPRAYCAN,
+	e_PROP_WEAP_EXTINGUISHER,
+	e_PROP_WEAP_CAMERA,
+	e_PROP_WEAP_NIGHTVISION,
+	e_PROP_WEAP_INFRARED,
+	e_PROP_WEAP_PARACHUTE,
+	e_PROP_WEAP_ARMOUR
+}
+
+enum e_PROP_FLAGS
+{
+	e_PROP_FLAGS_LINK		= 0x0000FFFF,
+	e_PROP_FLAGS_TYPES		= 0x00FF0000,
+	e_PROP_FLAGS_TYPE_PROP	= 0x00010000,
+	e_PROP_FLAGS_TYPE_BANK,
+	e_PROP_FLAGS_TYPE_AMMU,
+	e_PROP_FLAGS_TYPE_TELS,
+	e_PROP_FLAGS_TYPE_TELT,
+	e_PROP_FLAGS_TYPE_MONP,
+	e_PROP_FLAGS_TYPE_MONA,
+	e_PROP_FLAGS_TYPE_RSRC,
+	e_PROP_FLAGS_FLAGS		= 0xFF000000,
+	e_PROP_FLAGS_CUST_1		= 0x01000000,
+	e_PROP_FLAGS_CUST_2		= 0x02000000,
+	e_PROP_FLAGS_CUST_3		= 0x04000000,
+	e_PROP_FLAGS_CUST_4		= 0x08000000,
+	e_PROP_FLAGS_ACTIVE		= 0x80000000
+}
+
+enum E_PROP_DATA
+{
+	E_PROP_DATA_NAME[MAX_PROP_NAME],
+	e_PROP_FLAGS:E_PROP_DATA_FLAGS,
+	E_PROP_DATA_DATA_1,
+	E_PROP_DATA_DATA_2,
+	Bit:E_PROP_DATA_PLAYERS[PLAYER_BIT_ARRAY]
+}
+
+enum E_PROP_AMMU
+{
+	Menu:E_PROP_AMMU_MENU,
+	E_PROP_AMMU_DATA
+}
+
+static
+	YSI_g_sProperties[MAX_PROPERTIES][E_PROP_DATA],
+	YSI_g_sMoney[MAX_PLAYERS],
+	Bit:YSI_g_sPlayerProperties[MAX_PLAYERS][Bit_Bits(MAX_PROPERTIES)],
+	YSI_g_sSpawnWeapons[MAX_PLAYERS][13],
+	YSI_g_sShopMenu[MAX_PLAYERS][E_PROP_AMMU];
+
+forward Property_Loop();
+
+#define Property_IsActive(%1) \
+	((%1) < MAX_PROPERTIES && YSI_g_sProperties[(%1)][E_PROP_DATA_FLAGS] & e_PROP_FLAGS_ACTIVE)
+	
+Text_RegisterTag(properties);
+
+Property_Property()
+{
+	SetTimer("Property_Loop", 1000, 1);
+	ycmd("buy");
+	ycmd("bank");
+	ycmd("properties");
+	ycmd("balance");
+	ycmd("withdraw");
+	ycmd("sell");
+	return 1;
+}
+
+stock CreateProperty(name[], Float:x, Float:y, Float:z, price, reward, interval = 60000, sell = 0, multi = 0)
+{
+	new
+		i;
+	while (i < MAX_PROPERTIES)
+	{
+		if (!Property_IsActive(i)) break;
+		i++;
+	}
+	if (i == MAX_PROPERTIES) return NO_PROPERTY;
+	new
+		cp = CreateCheckpoint(x, y, z, 3.0);
+	if (cp == NO_CHECKPOINT) return NO_PROPERTY;
+	YSI_g_sProperties[i][E_PROP_DATA_FLAGS] = e_PROP_FLAGS_TYPE_PROP | e_PROP_FLAGS_ACTIVE | e_PROP_FLAGS:cp | (sell ? e_PROP_FLAGS_CUST_1 : e_PROP_FLAGS:0) | (multi ? e_PROP_FLAGS_CUST_2 : e_PROP_FLAGS:0);
+	if (multi) Bit_SetAll(YSI_g_sProperties[i][E_PROP_DATA_PLAYERS], 0);
+	else YSI_g_sProperties[i][E_PROP_DATA_PLAYERS][0] = Bit:INVALID_PLAYER_ID;
+	YSI_g_sProperties[i][E_PROP_DATA_NAME][MAX_PROP_NAME - 1] = interval & 0xFFFFF;
+	YSI_g_sProperties[i][E_PROP_DATA_DATA_1] = (interval & 0xFFFFF) | ((price & 0x00000FFF) << 20);
+	YSI_g_sProperties[i][E_PROP_DATA_DATA_2] = (reward & 0x3FFFF) | ((price & 0x03FFF000) << 6);
+	strcpy(YSI_g_sProperties[i][E_PROP_DATA_NAME], name, MAX_PROP_NAME - 1);
+	return i;
+}
+
+stock CreateBank(Float:x, Float:y, Float:z, interest = 0, interval = 0, name[] = "")
+{
+	new
+		i;
+	while (i < MAX_PROPERTIES)
+	{
+		if (!Property_IsActive(i)) break;
+		i++;
+	}
+	if (i == MAX_PROPERTIES) return NO_PROPERTY;
+	new
+		cp = CreateCheckpoint(x, y, z, 3.0, 1, 1);
+	if (cp == NO_CHECKPOINT) return NO_PROPERTY;
+	YSI_g_sProperties[i][E_PROP_DATA_FLAGS] = e_PROP_FLAGS_TYPE_BANK | e_PROP_FLAGS_ACTIVE | e_PROP_FLAGS:cp;
+	YSI_g_sProperties[i][E_PROP_DATA_DATA_1] = interest;
+	YSI_g_sProperties[i][E_PROP_DATA_DATA_2] = interval;
+	strcpy(YSI_g_sProperties[i][E_PROP_DATA_NAME], name);
+	return i;
+}
+
+stock CreateAmmunation(Float:x, Float:y, Float:z, weapon, ammo, price, ...)
+{
+	new
+		num = numargs();
+	if ((num / 3) * 3 != num) return NO_PROPERTY;
+	new
+		i;
+	while (i < MAX_PROPERTIES)
+	{
+		if (!Property_IsActive(i)) break;
+		i++;
+	}
+	if (i == MAX_PROPERTIES) return NO_PROPERTY;
+	new
+		cp = CreateCheckpoint(x, y, z, 3.0, 1, 1);
+	if (cp == NO_CHECKPOINT) return NO_PROPERTY;
+	YSI_g_sProperties[i][E_PROP_DATA_FLAGS] = e_PROP_FLAGS_TYPE_AMMU | e_PROP_FLAGS_ACTIVE | e_PROP_FLAGS:cp;
+	new
+		pos = 3,
+		count;
+	while (pos < num)
+	{
+		switch (getarg(pos++))
+		{
+			case WEAPON_BRASSKNUCKLE:
+				YSI_g_sProperties[i][E_PROP_DATA_DATA_1] = WEAPON_DATA;
+			case WEAPON_GOLFCLUB:
+				YSI_g_sProperties[i][E_PROP_DATA_DATA_2] = WEAPON_DATA;
+			case WEAPON_NITESTICK:
+				YSI_g_sProperties[i][E_PROP_DATA_PLAYERS][0] = Bit:WEAPON_DATA;
+			case WEAPON_KNIFE:
+				YSI_g_sProperties[i][E_PROP_DATA_PLAYERS][1] = Bit:WEAPON_DATA;
+			case WEAPON_BAT:
+				#if PLAYER_BIT_ARRAY > 2
+					YSI_g_sProperties[i][E_PROP_DATA_PLAYERS][2] = Bit:WEAPON_DATA;
+				#else
+					YSI_g_sProperties[i][E_PROP_DATA_NAME][0 - WEAPON_DATA_OFFSET] = WEAPON_DATA;
+				#endif
+			case WEAPON_SHOVEL:
+				#if PLAYER_BIT_ARRAY > 3
+					YSI_g_sProperties[i][E_PROP_DATA_PLAYERS][3] = Bit:WEAPON_DATA;
+				#else
+					YSI_g_sProperties[i][E_PROP_DATA_NAME][1 - WEAPON_DATA_OFFSET] = WEAPON_DATA;
+				#endif
+			case WEAPON_POOLSTICK:
+				#if PLAYER_BIT_ARRAY > 4
+					YSI_g_sProperties[i][E_PROP_DATA_PLAYERS][4] = Bit:WEAPON_DATA;
+				#else
+					YSI_g_sProperties[i][E_PROP_DATA_NAME][2 - WEAPON_DATA_OFFSET] = WEAPON_DATA;
+				#endif
+			case WEAPON_KATANA:
+				#if PLAYER_BIT_ARRAY > 5
+					YSI_g_sProperties[i][E_PROP_DATA_PLAYERS][5] = Bit:WEAPON_DATA;
+				#else
+					YSI_g_sProperties[i][E_PROP_DATA_NAME][3 - WEAPON_DATA_OFFSET] = WEAPON_DATA;
+				#endif
+			case WEAPON_CHAINSAW:
+				#if PLAYER_BIT_ARRAY > 6
+					YSI_g_sProperties[i][E_PROP_DATA_PLAYERS][6] = Bit:WEAPON_DATA;
+				#else
+					YSI_g_sProperties[i][E_PROP_DATA_NAME][4 - WEAPON_DATA_OFFSET] = WEAPON_DATA;
+				#endif
+			case WEAPON_DILDO:
+				#if PLAYER_BIT_ARRAY > 7
+					YSI_g_sProperties[i][E_PROP_DATA_PLAYERS][7] = Bit:WEAPON_DATA;
+				#else
+					YSI_g_sProperties[i][E_PROP_DATA_NAME][5 - WEAPON_DATA_OFFSET] = WEAPON_DATA;
+				#endif
+			case WEAPON_DILDO2:
+				YSI_g_sProperties[i][E_PROP_DATA_NAME][6 - WEAPON_DATA_OFFSET] = WEAPON_DATA;
+			case WEAPON_VIBRATOR:
+				YSI_g_sProperties[i][E_PROP_DATA_NAME][7 - WEAPON_DATA_OFFSET] = WEAPON_DATA;
+			case WEAPON_VIBRATOR2:
+				YSI_g_sProperties[i][E_PROP_DATA_NAME][8 - WEAPON_DATA_OFFSET] = WEAPON_DATA;
+			case WEAPON_FLOWER:
+				YSI_g_sProperties[i][E_PROP_DATA_NAME][9 - WEAPON_DATA_OFFSET] = WEAPON_DATA;
+			case WEAPON_CANE:
+				YSI_g_sProperties[i][E_PROP_DATA_NAME][10 - WEAPON_DATA_OFFSET] = WEAPON_DATA;
+			case WEAPON_GRENADE:
+				YSI_g_sProperties[i][E_PROP_DATA_NAME][11 - WEAPON_DATA_OFFSET] = WEAPON_DATA;
+			case WEAPON_TEARGAS:
+				YSI_g_sProperties[i][E_PROP_DATA_NAME][12 - WEAPON_DATA_OFFSET] = WEAPON_DATA;
+			case WEAPON_MOLTOV:
+				YSI_g_sProperties[i][E_PROP_DATA_NAME][13 - WEAPON_DATA_OFFSET] = WEAPON_DATA;
+			case WEAPON_COLT45:
+				YSI_g_sProperties[i][E_PROP_DATA_NAME][14 - WEAPON_DATA_OFFSET] = WEAPON_DATA;
+			case WEAPON_SILENCED:
+				YSI_g_sProperties[i][E_PROP_DATA_NAME][15 - WEAPON_DATA_OFFSET] = WEAPON_DATA;
+			case WEAPON_DEAGLE:
+				YSI_g_sProperties[i][E_PROP_DATA_NAME][16 - WEAPON_DATA_OFFSET] = WEAPON_DATA;
+			case WEAPON_SHOTGUN:
+				YSI_g_sProperties[i][E_PROP_DATA_NAME][17 - WEAPON_DATA_OFFSET] = WEAPON_DATA;
+			case WEAPON_SAWEDOFF:
+				YSI_g_sProperties[i][E_PROP_DATA_NAME][18 - WEAPON_DATA_OFFSET] = WEAPON_DATA;
+			case WEAPON_SHOTGSPA:
+				YSI_g_sProperties[i][E_PROP_DATA_NAME][19 - WEAPON_DATA_OFFSET] = WEAPON_DATA;
+			case WEAPON_UZI:
+				YSI_g_sProperties[i][E_PROP_DATA_NAME][20 - WEAPON_DATA_OFFSET] = WEAPON_DATA;
+			case WEAPON_MP5:
+				YSI_g_sProperties[i][E_PROP_DATA_NAME][21 - WEAPON_DATA_OFFSET] = WEAPON_DATA;
+			case WEAPON_AK47:
+				YSI_g_sProperties[i][E_PROP_DATA_NAME][22 - WEAPON_DATA_OFFSET] = WEAPON_DATA;
+			case WEAPON_M4:
+				YSI_g_sProperties[i][E_PROP_DATA_NAME][23 - WEAPON_DATA_OFFSET] = WEAPON_DATA;
+			case WEAPON_TEC9:
+				YSI_g_sProperties[i][E_PROP_DATA_NAME][24 - WEAPON_DATA_OFFSET] = WEAPON_DATA;
+			case WEAPON_RIFLE:
+				YSI_g_sProperties[i][E_PROP_DATA_NAME][25 - WEAPON_DATA_OFFSET] = WEAPON_DATA;
+			case WEAPON_SNIPER:
+				YSI_g_sProperties[i][E_PROP_DATA_NAME][26 - WEAPON_DATA_OFFSET] = WEAPON_DATA;
+			case WEAPON_ROCKETLAUNCHER:
+				YSI_g_sProperties[i][E_PROP_DATA_NAME][27 - WEAPON_DATA_OFFSET] = WEAPON_DATA;
+			case WEAPON_FLAMETHROWER:
+				YSI_g_sProperties[i][E_PROP_DATA_NAME][28 - WEAPON_DATA_OFFSET] = WEAPON_DATA;
+			case WEAPON_MINIGUN:
+				YSI_g_sProperties[i][E_PROP_DATA_NAME][29 - WEAPON_DATA_OFFSET] = WEAPON_DATA;
+			case WEAPON_SATCHEL:
+				YSI_g_sProperties[i][E_PROP_DATA_NAME][30 - WEAPON_DATA_OFFSET] = WEAPON_DATA;
+			case WEAPON_SPRAYCAN:
+				YSI_g_sProperties[i][E_PROP_DATA_NAME][31 - WEAPON_DATA_OFFSET] = WEAPON_DATA;
+			case WEAPON_FIREEXTINGUISHER:
+				YSI_g_sProperties[i][E_PROP_DATA_NAME][32 - WEAPON_DATA_OFFSET] = WEAPON_DATA;
+			case WEAPON_CAMERA:
+				YSI_g_sProperties[i][E_PROP_DATA_NAME][33 - WEAPON_DATA_OFFSET] = WEAPON_DATA;
+			case WEAPON_PARACHUTE:
+				YSI_g_sProperties[i][E_PROP_DATA_NAME][34 - WEAPON_DATA_OFFSET] = WEAPON_DATA;
+			case WEAPON_ARMOUR:
+				YSI_g_sProperties[i][E_PROP_DATA_NAME][35 - WEAPON_DATA_OFFSET] = WEAPON_DATA;
+			default:
+			{
+				pos += 2;
+				count--;
+			}
+		}
+		count++;
+	}
+	YSI_g_sProperties[i][E_PROP_DATA_NAME][MAX_PROP_NAME - 1] = count;
+	return i;
+}
+
+stock CreateMoneyArea(area, money = 100, interval = 10000)
+{
+	new
+		i;
+	while (i < MAX_PROPERTIES)
+	{
+		if (!Property_IsActive(i)) break;
+		i++;
+	}
+	if (i == MAX_PROPERTIES) return NO_PROPERTY;
+	if (area == NO_AREA) return NO_PROPERTY;
+	YSI_g_sProperties[i][E_PROP_DATA_FLAGS] = e_PROP_FLAGS_TYPE_MONA | e_PROP_FLAGS_ACTIVE | e_PROP_FLAGS:area;
+	YSI_g_sProperties[i][E_PROP_DATA_DATA_1] = money;
+	YSI_g_sProperties[i][E_PROP_DATA_DATA_2] = interval;
+	YSI_g_sProperties[i][E_PROP_DATA_NAME][0] = interval;
+	return i;
+}
+
+stock CreateMoneyPoint(Float:x, Float:y, Float:z, Float:s, money = 100, interval = 10000)
+{
+	new
+		i;
+	while (i < MAX_PROPERTIES)
+	{
+		if (!Property_IsActive(i)) break;
+		i++;
+	}
+	if (i == MAX_PROPERTIES) return NO_PROPERTY;
+	new
+		cp = CreateCheckpoint(x, y, z, s, 1, 1);
+	if (cp == NO_CHECKPOINT) return NO_PROPERTY;
+	YSI_g_sProperties[i][E_PROP_DATA_FLAGS] = e_PROP_FLAGS_TYPE_MONP | e_PROP_FLAGS_ACTIVE | e_PROP_FLAGS:cp;
+	YSI_g_sProperties[i][E_PROP_DATA_DATA_1] = money;
+	YSI_g_sProperties[i][E_PROP_DATA_DATA_2] = interval;
+	YSI_g_sProperties[i][E_PROP_DATA_NAME][0] = interval;
+	return i;
+}
+
+stock CreateTeleport(Float:sx, Float:sy, Float:sz, Float:tx, Float:ty, Float:tz, cost = 0, name[] = "")
+{
+	new
+		i;
+	while (i < MAX_PROPERTIES)
+	{
+		if (!Property_IsActive(i)) break;
+		i++;
+	}
+	if (i == MAX_PROPERTIES) return NO_PROPERTY;
+	new
+		cp = CreateCheckpoint(sx, sy, sz, 3.0, 1, 1);
+	if (cp == NO_CHECKPOINT) return NO_PROPERTY;
+	YSI_g_sProperties[i][E_PROP_DATA_FLAGS] = e_PROP_FLAGS_TYPE_TELS | e_PROP_FLAGS_ACTIVE | e_PROP_FLAGS:cp;
+	YSI_g_sProperties[i][E_PROP_DATA_DATA_1] = cost;
+	YSI_g_sProperties[i][E_PROP_DATA_DATA_2] = _:tx;
+	YSI_g_sProperties[i][E_PROP_DATA_PLAYERS][0] = Bit:ty;
+	YSI_g_sProperties[i][E_PROP_DATA_PLAYERS][1] = Bit:tz;
+	strcpy(YSI_g_sProperties[i][E_PROP_DATA_NAME], name);
+	return i;
+}
+
+stock CreateForbiddenArea(area, kick = 0, health = 1000, name[] = "")
+{
+	new
+		i;
+	while (i < MAX_PROPERTIES)
+	{
+		if (!Property_IsActive(i)) break;
+		i++;
+	}
+	if (i == MAX_PROPERTIES) return NO_PROPERTY;
+	if (area == NO_AREA) return NO_PROPERTY;
+	YSI_g_sProperties[i][E_PROP_DATA_FLAGS] = e_PROP_FLAGS_TYPE_RSRC | e_PROP_FLAGS_ACTIVE | e_PROP_FLAGS:area | (kick ? e_PROP_FLAGS_CUST_1 : e_PROP_FLAGS:0);
+	YSI_g_sProperties[i][E_PROP_DATA_DATA_2] = health;
+	strcpy(YSI_g_sProperties[i][E_PROP_DATA_NAME], name);
+	return i;
+}
+
+Property_OnPlayerEnterArea(playerid, area)
+{
+	for (new i = 0; i < MAX_PROPERTIES; i++)
+	{
+		new
+			e_PROP_FLAGS:flag = YSI_g_sProperties[i][E_PROP_DATA_FLAGS];
+		if (flag & e_PROP_FLAGS_ACTIVE && flag & e_PROP_FLAGS_LINK == e_PROP_FLAGS:area && flag & e_PROP_FLAGS_TYPES >= e_PROP_FLAGS_TYPE_MONA)
+		{
+			Bit_Set(YSI_g_sPlayerProperties[playerid], i, 1);
+			return;
+		}
+	}
+}
+
+#define Property_OnPlayerEnterCheckpointEx Property_OnPlayerEnterCP
+
+Property_OnPlayerEnterCheckpointEx(playerid, cpid)
+{
+	for (new i = 0; i < MAX_PROPERTIES; i++)
+	{
+		new
+			e_PROP_FLAGS:flag = YSI_g_sProperties[i][E_PROP_DATA_FLAGS];
+		if (flag & e_PROP_FLAGS_ACTIVE && flag & e_PROP_FLAGS_LINK == e_PROP_FLAGS:cpid)
+		{
+			if (flag & e_PROP_FLAGS_TYPES == e_PROP_FLAGS_TYPE_PROP)
+			{
+				SendClientMessage2Format(playerid, 0x00FF00AA, "YSI_PROP_NAME", YSI_g_sProperties[i][E_PROP_DATA_NAME], ((YSI_g_sProperties[i][E_PROP_DATA_DATA_2] >>> 6) & 0x03FFF000) | ((YSI_g_sProperties[i][E_PROP_DATA_DATA_1] >>> 20) & 0x00000FFF), YSI_g_sProperties[i][E_PROP_DATA_DATA_2] & 0x3FFFF);
+				if (flag & e_PROP_FLAGS_CUST_2)
+				{
+					if (Bit_Get(YSI_g_sProperties[i][E_PROP_DATA_PLAYERS], playerid)) SendClientMessage2(playerid, 0xFF0000AA, "YSI_PROP_YOURS");
+					else SendClientMessage2Format(playerid, 0xFF0000AA, "YSI_PROP_BUY", "buy");
+				}
+				else
+				{
+					new
+						owner = _:YSI_g_sProperties[i][E_PROP_DATA_PLAYERS][0];
+					if (owner == playerid) SendClientMessage2(playerid, 0xFF0000AA, "YSI_PROP_YOURS");
+					else if (IsPlayerConnected(owner)) SendClientMessage2Format(playerid, 0xFF0000AA, "YSI_PROP_OWNER", ReturnPlayerName(owner), owner);
+					if (owner != playerid) SendClientMessage2Format(playerid, 0xFF0000AA, "YSI_PROP_BUY", "buy");
+				}
+			}
+			else if (flag & e_PROP_FLAGS_TYPES == e_PROP_FLAGS_TYPE_AMMU)
+			{
+				Property_GenerateAmmuMenu(playerid, i, 0, 0);
+			}
+			else if (flag & e_PROP_FLAGS_TYPES == e_PROP_FLAGS_TYPE_BANK)
+			{
+				SendClientMessage2(playerid, 0x00FF00AA, "YSI_BANK_HELP1");
+				SendClientMessage2(playerid, 0x00FF00AA, "YSI_BANK_HELP2");
+				SendClientMessage2(playerid, 0x00FF00AA, "YSI_BANK_HELP3");
+			}
+			else if (flag & e_PROP_FLAGS_TYPES != e_PROP_FLAGS_TYPE_MONP) return 0;
+			Bit_Set(YSI_g_sPlayerProperties[playerid], i, 1);
+			return 1;
+		}
+	}
+	return 0;
+}
+
+Property_GetWeapon(ammu, slot, &page = 0)
+{
+	new
+		weapon;
+	while (page < 40)
+	{
+		if (!page)
+		{
+			weapon = YSI_g_sProperties[ammu][E_PROP_DATA_DATA_1];
+		}
+		else if (page == 1)
+		{
+			weapon = YSI_g_sProperties[ammu][E_PROP_DATA_DATA_2];
+		}
+		else if (page < PLAYER_BIT_ARRAY + 2)
+		{
+			weapon = _:YSI_g_sProperties[ammu][E_PROP_DATA_PLAYERS][page - 2];
+		}
+		else
+		{
+			weapon = YSI_g_sProperties[ammu][E_PROP_DATA_NAME][page - (PLAYER_BIT_ARRAY + 2)];
+		}
+		if (weapon)
+		{
+			if (!slot) return weapon;
+			else slot--;
+		}
+		page++;
+	}
+	return 0;
+}
+
+Property_WeaponName(weapon)
+{
+	static
+		weapons[39] = 
+		{
+			WEAPON_BRASSKNUCKLE,		WEAPON_GOLFCLUB,	WEAPON_NITESTICK,	WEAPON_KNIFE,
+			WEAPON_BAT,					WEAPON_SHOVEL,		WEAPON_POOLSTICK,	WEAPON_KATANA,
+			WEAPON_CHAINSAW,			WEAPON_DILDO,		WEAPON_DILDO2,		WEAPON_VIBRATOR,
+			WEAPON_VIBRATOR2,			WEAPON_FLOWER,		WEAPON_CANE,		WEAPON_GRENADE,
+			WEAPON_TEARGAS,				WEAPON_MOLTOV,		WEAPON_COLT45,		WEAPON_SILENCED,
+			WEAPON_DEAGLE,				WEAPON_SHOTGUN,		WEAPON_SAWEDOFF,	WEAPON_SHOTGSPA,
+			WEAPON_UZI,					WEAPON_MP5,			WEAPON_AK47,		WEAPON_M4,
+			WEAPON_TEC9,				WEAPON_RIFLE,		WEAPON_SNIPER,		WEAPON_ROCKETLAUNCHER,
+			WEAPON_FLAMETHROWER,		WEAPON_MINIGUN,		WEAPON_SATCHEL,		WEAPON_SPRAYCAN,
+			WEAPON_FIREEXTINGUISHER,	WEAPON_CAMERA,		WEAPON_PARACHUTE
+		};
+	new
+		str[32];
+	if (weapon > 38) str = "Armour";
+	else GetWeaponName(weapons[weapon], str, sizeof (str));
+	return str;
+}
+
+Property_WeaponCost(weapondata)
+{
+	new
+		str[32];
+	valstr(str, weapondata & 0xFFFFF);
+	return str;
+}
+
+Property_GenerateAmmuMenu(playerid, ammu, stage, page)
+{
+	new
+		Menu:menu = CreateMenu("Ammunation", 2, 270.0, 150.0, 50.0, 50.0);
+	if (stage)
+	{
+		new
+			start,
+			weapon = Property_GetWeapon(ammu, page, start);
+		if (weapon)
+		{
+			SetMenuColumnHeader(menu, 0, "Weapon");
+			SetMenuColumnHeader(menu, 1, "Price");
+			AddMenuItem(menu, 0, Property_WeaponName(start - 1));
+			AddMenuItem(menu, 1, Property_WeaponCost(weapon));
+		}
+	}
+	else
+	{
+		new
+			slot,
+			weapon,
+			start,
+			end = 12;
+		if (YSI_g_sProperties[ammu][E_PROP_DATA_NAME][MAX_PROP_NAME - 1] > 12)
+		{
+			start = page;
+			end = page + 11;
+		}
+		while (slot < end && (weapon = Property_GetWeapon(ammu, slot, start)))
+		{
+			AddMenuItem(menu, 0, Property_WeaponName(start - 1));
+			AddMenuItem(menu, 1, Property_WeaponCost(weapon));
+			slot++;
+		}
+		if (end != 12 && Property_GetWeapon(ammu, slot, start))
+		{
+			AddMenuItem(menu, 0, "More...");
+			AddMenuItem(menu, 1, " ");
+		}
+	}
+	YSI_g_sShopMenu[playerid][E_PROP_AMMU_MENU] = menu;
+	YSI_g_sShopMenu[playerid][E_PROP_AMMU_DATA] = ((ammu & 0xFFFF) << 16) | ((page & 0xFF) << 8) | (stage ? 1 : 0);
+}
+
+Command_(buy)
+{
+	if (IsPlayerInCheckpoint(playerid))
+	{
+		new
+			area = Checkpoint_Get(playerid);
+		for (new i = 0; i < MAX_PROPERTIES; i++)
+		{
+			new
+				e_PROP_FLAGS:flag = YSI_g_sProperties[i][E_PROP_DATA_FLAGS];
+			if (flag & e_PROP_FLAGS_ACTIVE && _:(flag & e_PROP_FLAGS_LINK) == area && flag & e_PROP_FLAGS_TYPES == e_PROP_FLAGS_TYPE_PROP)
+			{
+				new
+					price = ((YSI_g_sProperties[i][E_PROP_DATA_DATA_2] >>> 6) & 0x03FFF000) | ((YSI_g_sProperties[i][E_PROP_DATA_DATA_1] >>> 20) & 0x00000FFF);
+				if (GetPlayerMoney(playerid) >= price)
+				{
+					if (flag & e_PROP_FLAGS_CUST_2)
+					{
+						if (Bit_Get(YSI_g_sProperties[i][E_PROP_DATA_PLAYERS], playerid))
+						{
+							SendClientMessage2(playerid, 0xFF0000AA, "YSI_PROP_OWN");
+							return 1;
+						}
+						Bit_Set(YSI_g_sProperties[i][E_PROP_DATA_PLAYERS], playerid, 1);
+					}
+					else
+					{
+						new
+							owner = _:YSI_g_sProperties[i][E_PROP_DATA_PLAYERS][0];
+						if (owner == playerid)
+						{
+							SendClientMessage2(playerid, 0xFF0000AA, "YSI_PROP_OWN");
+							return 1;
+						}
+						if (IsPlayerConnected(owner))
+						{
+							GivePlayerMoney(owner, price);
+							SendClientMessage2Format(owner, 0xFF0000AA, "YSI_PROP_OUT", YSI_g_sProperties[i][E_PROP_DATA_NAME], ReturnPlayerName(playerid), playerid);
+						}
+						YSI_g_sProperties[i][E_PROP_DATA_PLAYERS][0] = Bit:playerid;
+					}
+					GivePlayerMoney(playerid, -price);
+					SendClientMessage2Format(playerid, 0x00FF00AA, "YSI_PROP_BOUGHT", YSI_g_sProperties[i][E_PROP_DATA_NAME], price);
+					return 1;
+				}
+				SendClientMessage2(playerid, 0xFF0000AA, "YSI_PROP_AFFORD");
+				return 1;
+			}
+		}
+		SendClientMessage2(playerid, 0xFF0000AA, "YSI_PROP_NOT");
+	}
+	else SendClientMessage2(playerid, 0xFF0000AA, "YSI_PROP_CP");
+	return 1;
+	#pragma unused params
+}
+
+#define Property_OnPlayerSelectedMenuRow Property_OnPlayerSelectedRow
+
+Property_OnPlayerSelectedMenuRow(playerid, row)
+{
+	new
+		Menu:menu = GetPlayerMenu(playerid);
+	if (menu == YSI_g_sShopMenu[playerid][E_PROP_AMMU_MENU])
+	{
+		switch (YSI_g_sShopMenu[playerid][E_PROP_AMMU_DATA])
+		{
+			case 0:
+			{
+				new
+					weapon = YSI_g_sShopMenu[playerid][E_PROP_AMMU_DATA];
+				#pragma unused weapon
+			}
+			case 1:
+			{
+			}
+			case 2:
+			{
+			}
+		}
+	}
+	return 1;
+	#pragma unused row, YSI_g_sSpawnWeapons, YSI_g_sMoney
+}
+
+public Property_Loop()
+{
+	static
+		Float:s_fLastGoodPos[MAX_PLAYERS][3],
+		sLastTick = 0;
+	new
+		currentTick = GetTickCount(),
+		elapse = currentTick - sLastTick;
+	for (new i = 0; i < MAX_PROPERTIES; i++)
+	{
+		new
+			flags = YSI_g_sProperties[i][E_PROP_DATA_FLAGS];
+		if (flags & _:e_PROP_FLAGS_ACTIVE)
+		{
+			switch (flags & _:e_PROP_FLAGS_TYPES)
+			{
+				case e_PROP_FLAGS_TYPE_MONP, e_PROP_FLAGS_TYPE_MONA:
+				{
+					new
+						time = YSI_g_sProperties[i][E_PROP_DATA_DATA_2];
+					if (!time) time = YSI_g_sProperties[i][E_PROP_DATA_NAME][0];
+					time -= elapse;
+					if (time < 0) time = 0;
+					YSI_g_sProperties[i][E_PROP_DATA_DATA_2] = time;
+				}
+				case e_PROP_FLAGS_TYPE_PROP:
+				{
+					new
+						time = YSI_g_sProperties[i][E_PROP_DATA_NAME][MAX_PROP_NAME - 1];
+					if (!time) time = YSI_g_sProperties[i][E_PROP_DATA_DATA_1] & 0x000FFFFF;
+					time -= elapse;
+					if (time < 0) time = 0;
+					YSI_g_sProperties[i][E_PROP_DATA_NAME][MAX_PROP_NAME - 1] = time;
+				}
+			}
+		}
+	}
+	for (new i = 0; i < MAX_PLAYERS; i++)
+	{
+		if (!IsPlayerConnected(i)) continue;
+		new
+			money,
+			bad;
+		for (new j = 0; j < Bit_Bits(MAX_PROPERTIES); j++)
+		{
+			new
+				props = _:YSI_g_sPlayerProperties[i][j],
+				slot = 1,
+				bit;
+			while (props)
+			{
+				if (props & slot)
+				{
+					new
+						prop = (j * 32) + bit,
+						flags = YSI_g_sProperties[prop][E_PROP_DATA_FLAGS];
+					if (flags & _:e_PROP_FLAGS_ACTIVE)
+					{
+						switch (flags & _:e_PROP_FLAGS_TYPES)
+						{
+							case e_PROP_FLAGS_TYPE_MONP, e_PROP_FLAGS_TYPE_MONA:
+								if (!YSI_g_sProperties[prop][E_PROP_DATA_DATA_2]) GivePlayerMoney(i, YSI_g_sProperties[prop][E_PROP_DATA_DATA_1]);
+							case e_PROP_FLAGS_TYPE_PROP:
+								if (((flags & _:e_PROP_FLAGS_CUST_2) ? Bit_Get(YSI_g_sProperties[prop][E_PROP_DATA_PLAYERS], i) : _:(YSI_g_sProperties[prop][E_PROP_DATA_PLAYERS][0] == Bit:i)) && !YSI_g_sProperties[prop][E_PROP_DATA_NAME][MAX_PROP_NAME - 1]) money += YSI_g_sProperties[prop][E_PROP_DATA_DATA_2] & 0x3FFFF;
+							case e_PROP_FLAGS_TYPE_RSRC:
+							{
+								if (flags & _:e_PROP_FLAGS_CUST_1)
+								{
+									SetPlayerPos(i, s_fLastGoodPos[i][0], s_fLastGoodPos[i][1], s_fLastGoodPos[i][2]);
+									bad = 1;
+								}
+								else
+								{
+									new Float:health;
+									GetPlayerHealth(i, health);
+									SetPlayerHealth(i, health - YSI_g_sProperties[i][E_PROP_DATA_DATA_2]);
+								}
+							}
+						}
+					}
+					props ^= slot;
+				}
+				slot <<= 1;
+				bit++;
+			}
+		}
+		if (money)
+		{
+			SendClientMessage2Format(i, 0x00FF00AA, "YSI_PROP_EARNT", money);
+			GivePlayerMoney(i, money);
+		}
+		if (!bad) GetPlayerPos(i, s_fLastGoodPos[i][0], s_fLastGoodPos[i][1], s_fLastGoodPos[i][2]);
+	}
+	sLastTick = currentTick;
+}

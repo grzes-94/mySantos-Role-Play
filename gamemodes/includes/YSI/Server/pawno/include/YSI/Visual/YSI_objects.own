@@ -1,0 +1,1660 @@
+/*----------------------------------------------------------------------------*-
+					===============================
+					Y Sever Includes - Objects Core
+					===============================
+Description:
+	Handles object streaming for >150 objects per player.  Also provides VW
+	support and improved object attachment (i.e. it works).  New versions
+	combines mine and Peter's streaming systems to narrow down objects by
+	approximation by a grid system then check all objects visible in near
+	by sections.
+Legal:
+	Copyright (C) 2007 Alex "Y_Less" Cole
+
+	This program is free software; you can redistribute it and/or
+	modify it under the terms of the GNU General Public License
+	as published by the Free Software Foundation; either version 2
+	of the License, or (at your option) any later version.
+
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with this program; if not, write to the Free Software
+	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+	MA 02110-1301, USA.
+Version:
+	0.2
+Changelog:
+	07/05/07:
+		Added groups support via default settings.
+		Corrected (unused) flag - bit pointless but meh.
+	02/05/07:
+		Added YSI_ prefix to all globals.
+		Added dynamic object API calls.
+	30/04/07:
+		Fixed bug in DestroyDynamicObject with OOB objects not 1st in list.
+		Exported sector removal code to Object_RemoveFromSector.
+		Added SECTOR parameter to E_OBJECT for ease of modification.
+	25/04/07:
+		Added 3d checking.
+		Added DestroyDynamicObject API function.
+		Fixed location checking on attached objects.
+		Fixed loop itteration for cyclic list structure.
+	24/04/07:
+		Fixed range leave checking.
+		Added moving objects list.
+	18/04/07:
+		Second version - completely rewritten after a chat with Peter.
+	16/04/07:
+		First version - adapted from my earlier e_objects.inc include.
+Functions:
+	Public:
+		Object_Loop - Main loop for checking.
+	Core:
+		Object_Object - Constructor.
+		Object_OnPlayerDisconnect - Disconnects objects.
+		Object_GetDifferenceXY - Get distance between object and point.
+		Object_FindSectors - Get near sectors.
+		Object_ParseSet - Check objects in list.
+		Object_Update - Updates the position of a moving object.
+		Object_ParseExisting - Check objects already visible.
+	Stock:
+		Object_AddToWorld - Make visible in world.
+		Object_RemoveFromWorld - Make invisible in world.
+		Object_AddToPlayer - Make visible to player.
+		Object_RemoveFromPlayer - Make invisible to player.
+		Object_AddToAllWorlds - Make visible in all worlds.
+		Object_RemoveFromAllWorlds - Make invisible in all worlds.
+		Object_AddToAllPlayers - Make visible to all players.
+		Object_RemoveFromAllPlayers - Make invisible to all players.
+		Object_IsValidModel - Checks if an object is good to be displayed.
+		Object_IsGlobal - Checks if an object is visible by default.
+	Static:
+		Object_Add - Internal add function.
+		Object_FindSector - Find a location's sector.
+		Object_AddToOOB - Add an object to the OOB list.
+		Object_AddToSector - Add an object to the specified list.
+		Object_RemoveFromSector - Remove an object from the given sector.
+	Inline:
+		Object_IsValid - Internal validity check.
+		Object_GetAttach - Get player an object's attached to.
+		Object_SetAttach - Set player an object's attached to.
+		Object_Destroy - Remove an object.
+		Object_HasPlayer - Checks if a player can see an object.
+	API:
+		MoveDynamicObject
+		StopDynamicObject
+		IsValidDynamicObject
+		CreateDynamicObject
+		CreatePlayerDynamicObject
+		CreateVWDynamicObject
+		CreatePlayerVWDynamicObject
+		DestroyDynamicObject
+		GetDynamicObjectPos
+		GetDynamicObjectRot
+		SetDynamicObjectPos
+		SetDynamicObjectRot
+		AttachDynamicObjectToPlayer
+		DetachDynamicObjectFromPlayer
+Callbacks:
+	OnDynamicObjectMoved
+Definitions:
+	OBJECT_SECTOR_SIZE - Size of edge of a grid square for approximations.
+	MAX_DYN_OBJECTS - Maximum number of objects.
+	OBJECT_VIEW_DISTANCE - Range to stream objects for.
+	NO_OBJECT - No object pointer.
+	NO_SECTOR - No sector pointer.
+	OBJECT_NO_SECTOR - OOB object marker.
+	OBJECT_LOOP_GRANULARITY - Number of itterations per second for the loop.
+	NO_ATTACH_PLAYER - Marker for object not attached to anyone.
+	OBJECT_WORLDS - Maximum number of worlds objects show up in.
+	OBJECT_WORLD_COUNT - Size of bit array of worlds.
+	OBJECT_PLAYER_COUNT - Size of bit array of players.
+Enums:
+	E_OBJECT - Structure of the dynamic object data.
+	e_OBJ_FLAG - Flags for the object.
+Macros:
+	OBJECT_SECTOR_EDGE - Number of sectors on one edge of the world.
+	OBJECT_SECTOR_ARRAY - Number of grid squares.
+	OBJECT_SIGHT - OBJECT_VIEW_DISTANCE squared for speed.
+	OBJECT_VIEW_RATIO - Number of sectors per view radius.
+	OBJECT_VIEW_EDGES - Max width of view range in sectors.
+	OBJECT_VIEW_SECTORS - Max sectors visible at once.
+	NO_OBJECT_CHECK - Invalid model.
+	OBJECT_BITS - Number of bits to hold all dynamic objects.
+	e_OBJ_FLAG_MOVED - Extension of e_OBJ_FLAG, both move flags together.
+Tags:
+	e_OBJ_FLAG - Flags for objects.
+Variables:
+	Global:
+		-
+	Static:
+		YSI_g_sObjectSectors - Array of pointers to sector object lists.
+		YSI_g_sObjects - Array of objects.
+		YSI_g_sOtherSector - Pointer to OOB object list.
+		YSI_g_sMovingObjects - Pointer to moving object list.
+		YSI_g_sNoObjects - Pointer to unused object list.
+Commands:
+	-
+Compile options:
+	NO_PERSONAL_OBJECTS - All players see all objects.
+	NO_OBJECTS_MOVE - No processing is done for moving objects.
+	OBJECT_WORLDS 0 - All objects are visible in all worlds.
+Operators:
+	-
+-*----------------------------------------------------------------------------*/
+
+#if !defined OBJECT_SECTOR_SIZE
+	#define OBJECT_SECTOR_SIZE 400
+#endif
+#define OBJECT_SECTOR_EDGE (ceildiv(OBJECT_BOUNDS * 2, OBJECT_SECTOR_SIZE))
+#define OBJECT_SECTOR_ARRAY (OBJECT_SECTOR_EDGE * OBJECT_SECTOR_EDGE)
+#if !defined MAX_DYN_OBJECTS
+	#define MAX_DYN_OBJECTS 2048
+#endif
+#if !defined OBJECT_VIEW_DISTANCE
+	#define OBJECT_VIEW_DISTANCE 200
+#endif
+#define OBJECT_SIGHT (OBJECT_VIEW_DISTANCE * OBJECT_VIEW_DISTANCE)
+#define OBJECT_VIEW_RATIO (ceildiv(OBJECT_VIEW_DISTANCE, OBJECT_SECTOR_SIZE))
+#define OBJECT_VIEW_EDGES ((OBJECT_VIEW_RATIO * 2) + 1)
+#define OBJECT_VIEW_SECTORS (OBJECT_VIEW_EDGES * OBJECT_VIEW_EDGES)
+#define NO_OBJECT -1
+#define NO_OBJECT_CHECK (NO_OBJECT & _:e_OBJ_FLAG_MODEL)
+#define NO_SECTOR -1
+#define OBJECT_NO_SECTOR 0x7FFFFFFF
+#define OBJECT_BITS Bit_Bits(MAX_DYN_OBJECTS)
+#if !defined OBJECT_LOOP_GRANULARITY
+	#define OBJECT_LOOP_GRANULARITY 5
+#endif
+#define NO_ATTACH_PLAYER 0xFF
+
+#define MAY_OBJECTS 254
+
+#define OBJECT_BOUNDS 5000
+
+#if !defined OBJECT_WORLDS
+	#define OBJECT_WORLDS MAX_WORLDS
+#endif
+
+#if OBJECT_WORLDS > 32
+	#define OBJECT_WORLD_COUNT Bit_Bits(OBJECT_WORLDS)
+#else
+	#define OBJECT_WORLD_COUNT 2
+#endif
+
+enum e_OBJ_FLAG (<<= 1)
+{
+	e_OBJ_FLAG_MODEL = 0x0000FFFF,
+	e_OBJ_FLAG_ATTACH = 0x00FF0000,
+	e_OBJ_FLAG_ATTACHED = 0x01000000,
+	e_OBJ_FLAG_JUMPED,
+	e_OBJ_FLAG_MOVED1,
+	e_OBJ_FLAG_MOVED2,
+	e_OBJ_FLAG_ROTATED,
+	e_OBJ_FLAG_ACTIVE,
+	e_OBJ_FLAG_RECREATED,
+	e_OBJ_FLAG_GLOBAL
+}
+
+#define e_OBJ_FLAG_MOVED (e_OBJ_FLAG_MOVED1 | e_OBJ_FLAG_MOVED2)
+
+enum E_OBJECT
+{
+	e_OBJ_FLAG:E_OBJECT_MODEL,
+	Float:E_OBJECT_X,
+	Float:E_OBJECT_Y,
+	Float:E_OBJECT_Z,
+	Float:E_OBJECT_RX,
+	Float:E_OBJECT_RY,
+	Float:E_OBJECT_RZ,
+	#if OBJECT_WORLDS > 0
+		Bit:E_OBJECT_WORLDS[OBJECT_WORLD_COUNT],
+	#endif
+	#if !defined NO_PERSONAL_OBJECTS
+		Bit:E_OBJECT_PLAYERS[PLAYER_BIT_ARRAY],
+	#endif
+	#if !defined NO_OBJECTS_MOVE
+		Float:E_OBJECT_MX,
+		Float:E_OBJECT_MY,
+		Float:E_OBJECT_MZ,
+		Float:E_OBJECT_MS,
+	#endif
+	E_OBJECT_NEXT,
+	E_OBJECT_SECTOR
+}
+
+forward Object_Loop();
+
+static
+	YSI_g_sObjectSectors[OBJECT_SECTOR_ARRAY],
+	YSI_g_sObjects[MAX_DYN_OBJECTS][E_OBJECT],
+	YSI_g_sOtherSector,
+	YSI_g_sMovingObjects,
+	YSI_g_sNoObjects;
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Object_IsValid
+Params:
+	objectid - Object to check
+Return:
+	-
+Notes:
+	Checks if a passed id is a valid object.
+-*----------------------------------------------------------------------------*/
+
+#define Object_IsValid(%1) \
+	((%1) >= 0 && (%1) < MAX_DYN_OBJECTS && YSI_g_sObjects[(%1)][E_OBJECT_MODEL] & e_OBJ_FLAG_ACTIVE)
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Object_GetAttach
+Params:
+	flags - Flags to check.
+Return:
+	Player the object is attached to.
+Notes:
+	Actually checks a set of passed flags, not a passed object.
+-*----------------------------------------------------------------------------*/
+
+#define Object_GetAttach(%1) \
+	((_:(%1) >> 16) & NO_ATTACH_PLAYER)
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Object_IsAttached
+Params:
+	flags - Flags to check.
+Return:
+	If the object is attached to a player.
+Notes:
+	Actually checks a set of passed flags, not a passed object.
+-*----------------------------------------------------------------------------*/
+
+#define Object_IsAttached(%1) \
+	(Object_GetAttach(%1) != NO_ATTACH_PLAYER)
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Object_SetAttach
+Params:
+	flags - Flags to check.
+Return:
+	-
+Notes:
+	Actually checks a set of passed flags, not a passed object.
+-*----------------------------------------------------------------------------*/
+
+#define Object_SetAttach(%1) \
+	e_OBJ_FLAG:(((%1) & NO_ATTACH_PLAYER) << 16)
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Object_IsGlobal
+Params:
+	objectid - Object to check
+Return:
+	-
+Notes:
+	Checks if an object is visible by default.
+-*----------------------------------------------------------------------------*/
+
+stock Object_IsGlobal(objectid)
+{
+	if (Object_IsValid(objecid)) return YSI_g_sObjects[objectid][E_OBJECT_MODEL] & e_OBJ_FLAG_GLOBAL;
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Object_Object
+Params:
+	-
+Return:
+	-
+Notes:
+	Sets up variables for initial use.
+-*----------------------------------------------------------------------------*/
+
+Object_Object()
+{
+	static
+		timer;
+	if (!timer)
+	{
+		YSI_g_sNoObjects = 0;
+		Object_Loop();
+		new
+			i;
+		while (i < MAX_DYN_OBJECTS) YSI_g_sObjects[i++][E_OBJECT_NEXT] = i;
+		YSI_g_sObjects[--i][E_OBJECT_NEXT] = NO_OBJECT;
+		YSI_g_sOtherSector = NO_OBJECT;
+		YSI_g_sMovingObjects = NO_OBJECT;
+		for (i = 0; i < OBJECT_SECTOR_ARRAY; i++) YSI_g_sObjectSectors[i] = NO_OBJECT;
+		timer = SetTimer("Object_Loop", 1000 / OBJECT_LOOP_GRANULARITY, 1);
+	}
+	return 1;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	CreateDynamicObject
+Params:
+	model - Model of object.
+	Float:X - x position.
+	Float:Y - y position.
+	Float:Z - z position.
+	Float:RX - x rotation.
+	Float:RY - y rotation.
+	Float:RZ - z rotation.
+Return:
+	-
+Notes:
+	Dynamic wrapper for CreateObject.
+-*----------------------------------------------------------------------------*/
+
+stock CreateDynamicObject(model, Float:X, Float:Y, Float:Z, Float:RX, Float:RY, Float:RZ)
+{
+	new
+		object = Object_Add(model, X, Y, Z, RX, RY, RZ);
+	if (object != NO_OBJECT)
+	{
+		Object_AddToAllWorlds(object);
+		Object_AddToAllPlayers(object);
+	}
+	return object;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	CreatePlayerDynamicObject
+Params:
+	playerid - Player to create it for.
+	model - Model of object.
+	Float:X - x position.
+	Float:Y - y position.
+	Float:Z - z position.
+	Float:RX - x rotation.
+	Float:RY - y rotation.
+	Float:RZ - z rotation.
+Return:
+	-
+Notes:
+	Dynamic wrapper for CreatePlayerObject.
+-*----------------------------------------------------------------------------*/
+
+stock CreatePlayerDynamicObject(playerid, model, Float:X, Float:Y, Float:Z, Float:RX, Float:RY, Float:RZ)
+{
+	new
+		object;
+	#if !defined NO_PLAYER_ONLY
+		object = Object_Add(model, X, Y, Z, RX, RY, RZ);
+		if (object != NO_OBJECT)
+		{
+			Object_AddToPlayer(object, playerid);
+			Object_AddToAllWorlds(object);
+		}
+	#else
+		#pragma unused playerid
+		object = CreateDynamicObject(model, X, Y, Z, RX, RY, RZ);
+	#endif
+	return object;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	CreateVWDynamicObject
+Params:
+	virtualworld - World to create it in.
+	model - Model of object.
+	Float:X - x position.
+	Float:Y - y position.
+	Float:Z - z position.
+	Float:RX - x rotation.
+	Float:RY - y rotation.
+	Float:RZ - z rotation.
+Return:
+	-
+Notes:
+	Dynamic wrapper for CreateObject with VW support.
+-*----------------------------------------------------------------------------*/
+
+stock CreateVWDynamicObject(virtualworld, model, Float:X, Float:Y, Float:Z, Float:RX, Float:RY, Float:RZ)
+{
+	new
+		object;
+	#if OBJECT_WORLDS > 0
+		object = Object_Add(model, X, Y, Z, RX, RY, RZ);
+		if (object != NO_OBJECT)
+		{
+			Object_AddToWorld(object, virtualworld);
+			Object_AddToAllPlayers(object);
+		}
+	#else
+		#pragma unused virtualworld
+		object = CreateDynamicObject(model, X, Y, Z, RX, RY, RZ);
+	#endif
+	return object;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	CreatePlayerVWDynamicObject
+Params:
+	playerid 0 Player to create it for.
+	virtualworld - World to create it in.
+	model - Model of object.
+	Float:X - x position.
+	Float:Y - y position.
+	Float:Z - z position.
+	Float:RX - x rotation.
+	Float:RY - y rotation.
+	Float:RZ - z rotation.
+Return:
+	-
+Notes:
+	Dynamic wrapper for CreatePlayerObject with VW support.
+-*----------------------------------------------------------------------------*/
+
+stock CreatePlayerVWDynamicObject(playerid, virtualworld, model, Float:X, Float:Y, Float:Z, Float:RX, Float:RY, Float:RZ)
+{
+	new
+		object;
+	#if !defined NO_PLAYER_ONLY
+		#if OBJECT_WORLDS > 0
+			object = Object_Add(model, X, Y, Z, RX, RY, RZ);
+			if (object != NO_OBJECT)
+			{
+				Object_AddToWorld(object, virtualworld);
+				Object_AddToPlayer(object, playerid);
+			}
+		#else
+			object = CreatePlayerDynamicObject(playerid, model, X, Y, Z, RX, RY, RZ);
+			#pragma unused virtualworld
+		#endif
+	#else
+		#if OBJECT_WORLDS > 0
+			object = CreateVWDynamicObject(virtualworld, model, X, Y, Z, RX, RY, RZ);
+			#pragma unused playerid
+		#else
+			object = CreateDynamicObject(model, X, Y, Z, RX, RY, RZ);
+			#pragma unused playerid, virtualworld
+		#endif
+	#endif
+	return object;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Object_Add
+Params:
+	model - The object model.
+	Float:x - X position.
+	Float:y - Y position.
+	Float:z - Z position.
+	Float:rx - X rotation.
+	Float:ry - Y rotation.
+	Float:rz - Z rotation.
+Return:
+	-
+Notes:
+	Internal object addition function.  Checks if there are any slots open
+	and adds the object to the list if there are.  Sets up initial flags and
+	stores the position.
+-*----------------------------------------------------------------------------*/
+
+static stock Object_Add(model, Float:x, Float:y, Float:z, Float:rx, Float:ry, Float:rz)
+{
+	model &= _:e_OBJ_FLAG_MODEL;
+	if (YSI_g_sNoObjects == NO_OBJECT) return NO_OBJECT;
+	if (!Object_IsValidModel(model)) return NO_OBJECT;
+	new
+		pointer = YSI_g_sNoObjects;
+	YSI_g_sNoObjects = YSI_g_sObjects[pointer][E_OBJECT_NEXT];
+	YSI_g_sObjects[pointer][E_OBJECT_MODEL] = e_OBJ_FLAG:model | e_OBJ_FLAG_ACTIVE | e_OBJ_FLAG_RECREATED | Object_SetAttach(NO_ATTACH_PLAYER);
+	YSI_g_sObjects[pointer][E_OBJECT_X] = x;
+	YSI_g_sObjects[pointer][E_OBJECT_Y] = y;
+	YSI_g_sObjects[pointer][E_OBJECT_Z] = z;
+	YSI_g_sObjects[pointer][E_OBJECT_RX] = rx;
+	YSI_g_sObjects[pointer][E_OBJECT_RY] = ry;
+	YSI_g_sObjects[pointer][E_OBJECT_RZ] = rz;
+	new
+		sector;
+	sector = Object_FindSector(x, y);
+	if (sector == OBJECT_NO_SECTOR) Object_AddToOOB(pointer);
+	else Object_AddToSector(sector, pointer);
+	return pointer;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Object_FindSector
+Params:
+	Float:x - X point.
+	Float:y - Y point.
+Return:
+	Point's sector.
+Notes:
+	Finds the sector of a point.
+-*----------------------------------------------------------------------------*/
+
+static stock Object_FindSector(Float:x, Float:y)
+{
+	new
+		Float:ss = float(OBJECT_SECTOR_SIZE);
+	if (x <= -OBJECT_BOUNDS || x >= OBJECT_BOUNDS || y <= -OBJECT_BOUNDS || y >= OBJECT_BOUNDS) return OBJECT_NO_SECTOR;
+	x += OBJECT_BOUNDS;
+	y += OBJECT_BOUNDS;
+	x /= ss;
+	y /= ss;
+	new
+		val;
+	val = (floatround(x, floatround_floor) * OBJECT_SECTOR_EDGE) + floatround(y, floatround_floor);
+	return val;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Object_AddToOOB
+Params:
+	pointer - Index of the object to add.
+Return:
+	-
+Notes:
+	Adds an object to the linked list for objects out of bounds of the grid
+	system (i.e. stores objects out the +/-OBJECT_BOUNDS world limit).
+-*----------------------------------------------------------------------------*/
+
+static stock Object_AddToOOB(pointer)
+{
+	if (YSI_g_sOtherSector == NO_OBJECT)
+	{
+		YSI_g_sOtherSector = pointer;
+		YSI_g_sObjects[pointer][E_OBJECT_NEXT] = pointer;
+	}
+	else
+	{
+		YSI_g_sObjects[pointer][E_OBJECT_NEXT] = YSI_g_sObjects[YSI_g_sOtherSector][E_OBJECT_NEXT];
+		YSI_g_sObjects[YSI_g_sOtherSector][E_OBJECT_NEXT] = pointer;
+	}
+	YSI_g_sObjects[pointer][E_OBJECT_SECTOR] = OBJECT_NO_SECTOR;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Object_AddToMovingList
+Params:
+	pointer - Index of the object to add.
+Return:
+	-
+Notes:
+	Adds an object to the linked list for dynamic objects.
+-*----------------------------------------------------------------------------*/
+
+static stock Object_AddToMovingList(pointer)
+{
+	if (YSI_g_sMovingObjects == NO_OBJECT)
+	{
+		YSI_g_sMovingObjects = pointer;
+		YSI_g_sObjects[pointer][E_OBJECT_NEXT] = pointer;
+	}
+	else
+	{
+		YSI_g_sObjects[pointer][E_OBJECT_NEXT] = YSI_g_sObjects[YSI_g_sMovingObjects][E_OBJECT_NEXT];
+		YSI_g_sObjects[YSI_g_sMovingObjects][E_OBJECT_NEXT] = pointer;
+	}
+	YSI_g_sObjects[pointer][E_OBJECT_SECTOR] = OBJECT_NO_SECTOR;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Object_AddToSector
+Params:
+	sector - Sector of object.
+	pointer - Index of object.
+Return:
+	-
+Notes:
+	Saves an object as being in a sector.
+-*----------------------------------------------------------------------------*/
+
+static stock Object_AddToSector(sector, pointer)
+{
+	new
+		data = YSI_g_sObjectSectors[sector];
+	if (data == NO_OBJECT)
+	{
+		YSI_g_sObjectSectors[sector] = pointer;
+		YSI_g_sObjects[pointer][E_OBJECT_NEXT] = pointer;
+	}
+	else
+	{
+		YSI_g_sObjects[pointer][E_OBJECT_NEXT] = YSI_g_sObjects[data][E_OBJECT_NEXT];
+		YSI_g_sObjects[data][E_OBJECT_NEXT] = pointer;
+	}
+	YSI_g_sObjects[pointer][E_OBJECT_SECTOR] = sector;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	DestroyDynamicObject
+Params:
+	objectid - Object to destroy.
+Return:
+	-
+Notes:
+	Dynamic wrapper for DestroyObject.  Removes the object from it's list by
+	using the cyclic property to find the previous object and repointing it to
+	the object after the removed one.  This ay make it point to itself but
+	this is a good thing.  The object is then added to the unassigned list in
+	the same way as it's added to a normal list and finally the object flags
+	are reset to destroy the data.
+-*----------------------------------------------------------------------------*/
+
+stock DestroyDynamicObject(objectid)
+{
+	if (Object_IsValid(objectid))
+	{
+		Object_RemoveFromSector(YSI_g_sObjects[objectid][E_OBJECT_SECTOR], objectid);
+		if (YSI_g_sNoObjects == NO_OBJECT)
+		{
+			YSI_g_sNoObjects = objectid;
+			YSI_g_sObjects[objectid][E_OBJECT_NEXT] = objectid;
+		}
+		else
+		{
+			YSI_g_sObjects[objectid][E_OBJECT_NEXT] = YSI_g_sObjects[YSI_g_sNoObjects][E_OBJECT_NEXT];
+			YSI_g_sObjects[YSI_g_sNoObjects][E_OBJECT_NEXT] = objectid;
+		}
+		YSI_g_sObjects[objectid][E_OBJECT_MODEL] = e_OBJ_FLAG:0;
+		return 1;
+	}
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Object_RemoveFromSector
+Params:
+	sector - Sector list to modify.
+	objectid - Object to remove.
+Return:
+	-
+Notes:
+	Used to be part of DestroyDynamicObject but is needed by other API
+	functions.
+-*----------------------------------------------------------------------------*/
+
+static stock Object_RemoveFromSector(sector, objectid)
+{
+	new
+		pointer = objectid,
+		last;
+	do
+	{
+		last = pointer;
+		pointer = YSI_g_sObjects[last][E_OBJECT_NEXT];
+	}
+	while (pointer != objectid);
+	if (last == objectid)
+	{
+		if (YSI_g_sObjects[objectid][E_OBJECT_MODEL] & e_OBJ_FLAG_MOVED) YSI_g_sMovingObjects = NO_OBJECT;
+		else if (sector == OBJECT_NO_SECTOR) YSI_g_sOtherSector = NO_OBJECT;
+		else YSI_g_sObjectSectors[sector] = NO_OBJECT;
+	}
+	else
+	{
+		if (YSI_g_sObjects[objectid][E_OBJECT_MODEL] & e_OBJ_FLAG_MOVED)
+		{
+			if (YSI_g_sMovingObjects == objectid) YSI_g_sMovingObjects = last;
+		}
+		else if (sector == OBJECT_NO_SECTOR)
+		{
+			if (YSI_g_sOtherSector == objectid) YSI_g_sOtherSector = last;
+		}
+		else if (YSI_g_sObjectSectors[sector] == objectid) YSI_g_sObjectSectors[sector] =  last;
+		YSI_g_sObjects[last][E_OBJECT_NEXT] = YSI_g_sObjects[objectid][E_OBJECT_NEXT];
+	}
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	SetDynamicObjectPos
+Params:
+	objectid - Object to set new position of.
+	Float:x - X co-ordinate.
+	Float:y - Y co-ordintae.
+	Float:z - Z co-ordinate.
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock SetDynamicObjectPos(objectid, Float:x, Float:y, Float:z)
+{
+	if (!Object_IsValid(objectid) || Object_GetAttach(YSI_g_sObjects[objectid][E_OBJECT_MODEL] != NO_ATTACH_PLAYER)) return 0;
+	new
+		newsec = Object_FindSector(x, y);
+	if (newsec != YSI_g_sObjects[objectid][E_OBJECT_SECTOR])
+	{
+		Object_RemoveFromSector(YSI_g_sObjects[objectid][E_OBJECT_SECTOR], objectid);
+		Object_AddToSector(newsec, objectid);
+		YSI_g_sObjects[objectid][E_OBJECT_SECTOR] = newsec;
+	}
+	YSI_g_sObjects[objectid][E_OBJECT_X] = x;
+	YSI_g_sObjects[objectid][E_OBJECT_Y] = y;
+	YSI_g_sObjects[objectid][E_OBJECT_Z] = z;
+	YSI_g_sObjects[objectid][E_OBJECT_MODEL] |= e_OBJ_FLAG_JUMPED;
+	return 1;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	SetDynamicObjectRot
+Params:
+	objectid - Object to set new rotation of.
+	Float:x - X rotation.
+	Float:y - Y rotation.
+	Float:z - Z rotation.
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock SetDynamicObjectRot(objectid, Float:x, Float:y, Float:z)
+{
+	if (!Object_IsValid(objectid) || Object_GetAttach(YSI_g_sObjects[objectid][E_OBJECT_MODEL] != NO_ATTACH_PLAYER)) return 0;
+	YSI_g_sObjects[objectid][E_OBJECT_RX] = x;
+	YSI_g_sObjects[objectid][E_OBJECT_RY] = y;
+	YSI_g_sObjects[objectid][E_OBJECT_RZ] = z;
+	YSI_g_sObjects[objectid][E_OBJECT_MODEL] |= e_OBJ_FLAG_ROTATED;
+	return 1;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	GetDynamicObjectRot
+Params:
+	objectid - Object to set new rotation of.
+	&Float:x - X rotation store.
+	&Float:y - Y rotation store.
+	&Float:z - Z rotation store.
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock GetDynamicObjectRot(objectid, &Float:x, &Float:y, &Float:z)
+{
+	if (!Object_IsValid(objectid) || Object_GetAttach(YSI_g_sObjects[objectid][E_OBJECT_MODEL] != NO_ATTACH_PLAYER)) return 0;
+	x = YSI_g_sObjects[objectid][E_OBJECT_RX];
+	y = YSI_g_sObjects[objectid][E_OBJECT_RY];
+	z = YSI_g_sObjects[objectid][E_OBJECT_RZ];
+	YSI_g_sObjects[objectid][E_OBJECT_MODEL] |= e_OBJ_FLAG_ROTATED;
+	return 1;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Object_AddToWorld
+Params:
+	object - Object to add.
+	world - World to add to.
+Return:
+	-
+Notes:
+	Makes an object visible in a world.
+-*----------------------------------------------------------------------------*/
+
+stock Object_AddToWorld(object, world)
+{
+	#if OBJECT_WORLDS > 0
+		if (Object_IsValid(object)) Bit_Set(YSI_g_sObjects[object][E_OBJECT_WORLDS], world, 1);
+	#else
+		#pragma unused object, world
+	#endif
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Object_RemoveFromWorld
+Params:
+	object - Object to remove.
+	world - World to remove from.
+Return:
+	-
+Notes:
+	Makes an object invisible in a world.
+-*----------------------------------------------------------------------------*/
+
+stock Object_RemoveFromWorld(object, world)
+{
+	#if OBJECT_WORLDS > 0
+		if (Object_IsValid(object)) Bit_Set(YSI_g_sObjects[object][E_OBJECT_WORLDS], world, 0);
+	#else
+		#pragma unused object, world
+	#endif
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Object_AddToPlayer
+Params:
+	object - Object to add.
+	playerid - Player to add to.
+Return:
+	-
+Notes:
+	Makes an object visible to a player.
+-*----------------------------------------------------------------------------*/
+
+stock Object_AddToPlayer(object, playerid)
+{
+	#if !defined NO_PERSONAL_OBJECTS
+		if (Object_IsValid(object)) Bit_Set(YSI_g_sObjects[object][E_OBJECT_PLAYERS], playerid, 1);
+	#else
+		#pragma unused object, playerid
+	#endif
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Object_RemoveFromWorld
+Params:
+	object - Object to remove.
+	playerid - Player to remove from.
+Return:
+	-
+Notes:
+	Makes an object invisible to a player.
+-*----------------------------------------------------------------------------*/
+
+stock Object_RemoveFromPlayer(object, playerid)
+{
+	#if !defined NO_PERSONAL_OBJECTS
+		if (Object_IsValid(object)) Bit_Set(YSI_g_sObjects[object][E_OBJECT_PLAYERS], playerid, 0);
+	#else
+		#pragma unused object, playerid
+	#endif
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Object_AddToAllWorlds
+Params:
+	object - Object to add.
+Return:
+	-
+Notes:
+	Makes an object visible in all worlds.
+-*----------------------------------------------------------------------------*/
+
+stock Object_AddToAllWorlds(object)
+{
+	#if OBJECT_WORLDS > 0
+		if (Object_IsValid(object)) Bit_SetAll(YSI_g_sObjects[object][E_OBJECT_WORLDS], 1);
+	#else
+		#pragma unused object
+	#endif
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Object_RemoveFromAllWorlds
+Params:
+	object - Object to remove.
+Return:
+	-
+Notes:
+	Makes an object invisible in all worlds.
+-*----------------------------------------------------------------------------*/
+
+stock Object_RemoveFromAllWorlds(object)
+{
+	#if OBJECT_WORLDS > 0
+		if (Object_IsValid(object)) Bit_SetAll(YSI_g_sObjects[object][E_OBJECT_WORLDS], 0);
+	#else
+		#pragma unused object
+	#endif
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Object_AddToAllPlayers
+Params:
+	object - Object to add.
+Return:
+	-
+Notes:
+	Makes an object visible to all players.
+-*----------------------------------------------------------------------------*/
+
+stock Object_AddToAllPlayers(object)
+{
+	#if !defined NO_PERSONAL_OBJECTS
+		if (Object_IsValid(object))
+		{
+			Bit_SetAll(YSI_g_sObjects[object][E_OBJECT_PLAYERS], 1);
+			YSI_g_sObjects[object][E_OBJECT_MODEL] |= e_OBJ_FLAG_GLOBAL;
+		}
+	#else
+		#pragma unused object
+	#endif
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Object_RemoveFromAllPlayers
+Params:
+	object - Object to remove.
+Return:
+	-
+Notes:
+	Makes an object invisible to all players.
+-*----------------------------------------------------------------------------*/
+
+stock Object_RemoveFromAllPlayers(object)
+{
+	#if !defined NO_PERSONAL_OBJECTS
+		if (Object_IsValid(object))
+		{
+			Bit_SetAll(YSI_g_sObjects[object][E_OBJECT_PLAYERS], 0);
+			YSI_g_sObjects[object][E_OBJECT_MODEL] &= ~e_OBJ_FLAG_GLOBAL;
+		}
+	#else
+		#pragma unused object
+	#endif
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Object_GetPos
+Params:
+	objectid - Object to get position of.
+	&Float:x - X return.
+	&Float:y - Y return.
+	&Float:z - Z return.
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+static Object_GetPos(objectid, &Float:x, &Float:y, &Float:z)
+{
+	new
+		playerid = Object_GetAttach(YSI_g_sObjects[objectid][E_OBJECT_MODEL]);
+	if (playerid == NO_ATTACH_PLAYER || !IsPlayerConnected(playerid))
+	{
+		x = YSI_g_sObjects[objectid][E_OBJECT_X];
+		y = YSI_g_sObjects[objectid][E_OBJECT_Y];
+		z = YSI_g_sObjects[objectid][E_OBJECT_Z];
+	}
+	else
+	{
+		GetPlayerPos(playerid, x, y, z);
+		x += YSI_g_sObjects[objectid][E_OBJECT_X];
+		y += YSI_g_sObjects[objectid][E_OBJECT_Y];
+		z += YSI_g_sObjects[objectid][E_OBJECT_Z];
+	}
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	GetDynamicObjectPos
+Params:
+	objectid - Object to get position of.
+	&Float:x - X return.
+	&Float:y - Y return.
+	&Float:z - Z return.
+Return:
+	-
+Notes:
+	API wrapper for Object_GetPos.
+-*----------------------------------------------------------------------------*/
+
+stock GetDynamicObjectPos(objectid, &Float:x, &Float:y, &Float:z)
+{
+	if (!Object_IsValid) return 0;
+	Object_GetPos(objectid, x, y, z);
+	return 1;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Object_GetDifferenceXY
+Params:
+	object - Object to check location of.
+	Float:x - X point to compare to.
+	Float:y - Y point to compare to.
+	Float:z - Z point to compare to.
+Return:
+	Integer distance between the points.
+Notes:
+	Expanded for 3d checking but not renamed.
+-*----------------------------------------------------------------------------*/
+
+Float:Object_GetDifferenceXY(object, Float:x, Float:y, Float:z)
+{
+	new
+		Float:ox,
+		Float:oy,
+		Float:oz;
+	Object_GetPos(object, ox, oy, oz);
+	ox -= x;
+	oy -= y;
+	oz -= z;
+	return ((ox * ox) + (oy * oy) + (oz * oz));
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Object_Destroy
+Params:
+	playerid - Player to destroy object for.
+	objectid - Object to destroy.
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+#define Object_Destroy(%1,%2,%3) \
+	DestroyPlayerObject((%1), (%3)); \
+	playerObjects[(%2)] = NO_OBJECT
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Object_HasPlayer
+Params:
+	objectid - Object to check.
+	playerid - Player to check.
+	worldid - World to check.
+Return:
+	Whether the object is visible to that player in that world.
+Notes:
+	This is a variable function.  Depending on the compile time settings it may
+	or may not use all the parameters (it may use none).
+-*----------------------------------------------------------------------------*/
+
+#if !defined NO_PERSONAL_OBJECTS
+	#if OBJECT_WORLDS > 0
+		#define Object_HasPlayer(%1,%2,%3) \
+			(Bit_Get(YSI_g_sObjects[(%1)][E_OBJECT_WORLDS], (%3)) & Bit_Get(YSI_g_sObjects[(%1)][E_OBJECT_PLAYERS], (%2)))
+	#else
+		#define Object_HasPlayer(%1,%2,%3) \
+			(Bit_Get(YSI_g_sObjects[(%1)][E_OBJECT_PLAYERS], (%2)))
+	#endif
+#else
+	#if OBJECT_WORLDS > 0
+		#define Object_HasPlayer(%1,%2,%3) \
+			(Bit_Get(YSI_g_sObjects[(%1)][E_OBJECT_WORLDS], (%3)))
+	#else
+		#define Object_HasPlayer(%1,%2,%3) \
+			(TRUE)
+	#endif
+#endif
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Object_ParseExisting
+Params:
+	playerid - Player to check.
+	Float:x - Player's x position.
+	Float:y - Player's y position.
+	Float:z - Player's z position.
+	playerObjects[MAY_OBJECTS] - Data on player's currently visible objects.
+	&count - Number of objects confirmed visible.
+	Bit:objects[OBJECT_BITS] - Bit array of objects checked.
+Return:
+	-
+Notes:
+	Checks currently visible objects are still visible so they're not
+	recreated every loop.
+-*----------------------------------------------------------------------------*/
+
+Object_ParseExisting(playerid, Float:x, Float:y, Float:z, playerObjects[MAY_OBJECTS], &count, Bit:objects[OBJECT_BITS], world)
+{
+	new
+		object,
+		e_OBJ_FLAG:flag;
+	for (new i = 0; i < MAY_OBJECTS; i++)
+	{
+		new
+			objectid = i + 1;
+		if ((object = playerObjects[i]) != NO_OBJECT && IsValidPlayerObject(playerid, objectid))
+		{
+			object &= _:e_OBJ_FLAG_MODEL;
+			flag = YSI_g_sObjects[object][E_OBJECT_MODEL];
+			if (flag & e_OBJ_FLAG_RECREATED)
+			{
+				Object_Destroy(playerid, i, objectid);
+				continue;
+			}
+			if (!(flag & e_OBJ_FLAG_ACTIVE) || !Object_HasPlayer(object, playerid, world) || Object_GetDifferenceXY(object, x, y, z) >= OBJECT_SIGHT)
+			{
+				Object_Destroy(playerid, i, objectid);
+				goto set_bit;
+			}
+			#if !defined NO_OBJECTS_MOVE
+				if ((flag & e_OBJ_FLAG_MOVED))
+				{
+					if (_:(flag & e_OBJ_FLAG_MOVED) != (playerObjects[i] & _:e_OBJ_FLAG_MOVED))
+					{
+						SetPlayerObjectPos(playerid, objectid, YSI_g_sObjects[object][E_OBJECT_X], YSI_g_sObjects[object][E_OBJECT_Y], YSI_g_sObjects[object][E_OBJECT_Z]);
+						MovePlayerObject(playerid, objectid, YSI_g_sObjects[object][E_OBJECT_MX], YSI_g_sObjects[object][E_OBJECT_MY], YSI_g_sObjects[object][E_OBJECT_MZ], YSI_g_sObjects[object][E_OBJECT_MS]);
+						playerObjects[i] &= ~_:e_OBJ_FLAG_MOVED;
+						playerObjects[i] |= _:(flag & e_OBJ_FLAG_MOVED);
+					}
+					goto inc_count;
+				}
+			#endif
+			if (flag & e_OBJ_FLAG_ATTACHED)
+			{
+				if (Object_IsAttached(flag))
+				{
+					AttachPlayerObjectToPlayer(playerid, objectid, Object_GetAttach(flag), YSI_g_sObjects[object][E_OBJECT_X], YSI_g_sObjects[object][E_OBJECT_Y], YSI_g_sObjects[object][E_OBJECT_Z], YSI_g_sObjects[object][E_OBJECT_RX], YSI_g_sObjects[object][E_OBJECT_RY], YSI_g_sObjects[object][E_OBJECT_RZ]);
+					goto inc_count;
+				}
+				else
+				{
+					Object_Destroy(playerid, i, objectid);
+					continue;
+				}
+			}
+			if (flag & e_OBJ_FLAG_JUMPED) SetPlayerObjectPos(playerid, objectid, YSI_g_sObjects[object][E_OBJECT_X], YSI_g_sObjects[object][E_OBJECT_Y], YSI_g_sObjects[object][E_OBJECT_Z]);
+			if (flag & e_OBJ_FLAG_ROTATED) SetPlayerObjectRot(playerid, objectid, YSI_g_sObjects[object][E_OBJECT_RX], YSI_g_sObjects[object][E_OBJECT_RY], YSI_g_sObjects[object][E_OBJECT_RZ]);
+			inc_count:
+			count++;
+			set_bit:
+			Bit_Set(objects, object, 1);
+		}
+	}
+}
+
+#if !defined NO_OBJECTS_MOVE
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Object_Update
+Params:
+	objectid - Object to process.
+	Float:elapsedTime - Time since last update in seconds.
+Return:
+	-
+Notes:
+	Updates a moving object's position in our internal memory based on speed
+	and time (d = s * t)
+-*----------------------------------------------------------------------------*/
+
+Object_Update(objectid, Float:elapsedTime)
+{
+	new
+		Float:x = YSI_g_sObjects[objectid][E_OBJECT_X],
+		Float:y = YSI_g_sObjects[objectid][E_OBJECT_Y],
+		Float:z = YSI_g_sObjects[objectid][E_OBJECT_Z],
+		Float:mx = YSI_g_sObjects[objectid][E_OBJECT_MX],
+		Float:my = YSI_g_sObjects[objectid][E_OBJECT_MY],
+		Float:mz = YSI_g_sObjects[objectid][E_OBJECT_MZ],
+		Float:distance = elapsedTime * YSI_g_sObjects[objectid][E_OBJECT_MS],
+		Float:remaining = floatsqroot(((x - mx) * (x - mx)) + ((y - my) * (y - my)) + ((z - mz) * (z - mz)));
+	if (distance >= remaining)
+	{
+		YSI_g_sObjects[objectid][E_OBJECT_X] = mx;
+		YSI_g_sObjects[objectid][E_OBJECT_Y] = my;
+		YSI_g_sObjects[objectid][E_OBJECT_Z] = mz;
+		new
+			e_OBJ_FLAG:oldmove = YSI_g_sObjects[objectid][E_OBJECT_MODEL] & e_OBJ_FLAG_MOVED;
+		CallRemoteFunction("OnDynamicObjectMoved", "i", objectid);
+		if (oldmove == YSI_g_sObjects[objectid][E_OBJECT_MODEL] & e_OBJ_FLAG_MOVED)
+		{
+			StopDynamicObject(objectid);
+			
+		}
+		return 1;
+	}
+	else
+	{
+		remaining /= distance;
+		YSI_g_sObjects[objectid][E_OBJECT_X] += (mx - x) / remaining;
+		YSI_g_sObjects[objectid][E_OBJECT_Y] += (my - y) / remaining;
+		YSI_g_sObjects[objectid][E_OBJECT_Z] += (mz - z) / remaining;
+	}
+	return 0;
+}
+
+#endif
+
+/*----------------------------------------------------------------------------*-
+Function:
+	IsValidDynamicObject
+Params:
+	objectid - Object to check.
+Return:
+	Object_IsValid.
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock IsValidDynamicObject(objectid)
+{
+	return Object_IsValid(objectid);
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	AttachDynamicObjectToPlayer
+Params:
+	objectid - Object to move.
+	Float:X - X position of target.
+	Float:Y - Y position of target.
+	Float:Z - Z position of target.
+	Float:S - Speed.
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock AttachDynamicObjectToPlayer(objectid, playerid, Float:X, Float:Y, Float:Z, Float:RX, Float:RY, Float:RZ)
+{
+	#if !defined NO_OBJECTS_MOVE
+		if (Object_IsValid(objectid) && Object_GetAttach(YSI_g_sObjects[objectid][E_OBJECT_MODEL]) == NO_ATTACH_PLAYER)
+		{
+			YSI_g_sObjects[objectid][E_OBJECT_MODEL] |= e_OBJ_FLAG_ATTACHED;
+			YSI_g_sObjects[objectid][E_OBJECT_X] = X;
+			YSI_g_sObjects[objectid][E_OBJECT_Y] = Y;
+			YSI_g_sObjects[objectid][E_OBJECT_Z] = Z;
+			YSI_g_sObjects[objectid][E_OBJECT_RX] = RX;
+			YSI_g_sObjects[objectid][E_OBJECT_RY] = RY;
+			YSI_g_sObjects[objectid][E_OBJECT_RZ] = RZ;
+			Object_RemoveFromSector(YSI_g_sObjects[objectid][E_OBJECT_SECTOR], objectid);
+			Object_AddToMovingList(objectid);
+			YSI_g_sObjects[objectid][E_OBJECT_MODEL] &= ~e_OBJ_FLAG_ATTACH;
+			YSI_g_sObjects[objectid][E_OBJECT_MODEL] |= Object_SetAttach(playerid);
+			return 1;
+		}
+	#else
+		#pragma unused objectid, X, Y, Z, S
+	#endif
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	DetachDynamicObjectFromPlayer
+Params:
+	objectid - Object to detach.
+Return:
+	-
+Notes:
+	Detaches an object from a player.
+-*----------------------------------------------------------------------------*/
+
+stock DetachDynamicObjectFromPlayer(objectid)
+{
+	if (!Object_IsValid(objectid)) return;
+	new
+		playerid = Object_GetAttach(YSI_g_sObjects[objectid][E_OBJECT_MODEL]);
+	if (playerid != NO_ATTACH_PLAYER)
+	{
+		Object_RemoveFromSector(OBJECT_NO_SECTOR, objectid);
+		new
+			Float:x,
+			Float:y,
+			Float:z;
+		GetPlayerPos(playerid, x, y, z);
+		YSI_g_sObjects[objectid][E_OBJECT_X] = x;
+		YSI_g_sObjects[objectid][E_OBJECT_Y] = y;
+		YSI_g_sObjects[objectid][E_OBJECT_Z] = z;
+		new
+			sector;
+		sector = Object_FindSector(x, y);
+		if (sector == OBJECT_NO_SECTOR) Object_AddToOOB(objectid);
+		else Object_AddToSector(sector, objectid);
+		YSI_g_sObjects[objectid][E_OBJECT_MODEL] |= e_OBJ_FLAG_ATTACHED | e_OBJ_FLAG_ATTACH | e_OBJ_FLAG_RECREATED;
+	}
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	MoveDynamicObject
+Params:
+	objectid - Object to move.
+	Float:X - X position of target.
+	Float:Y - Y position of target.
+	Float:Z - Z position of target.
+	Float:S - Speed.
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock MoveDynamicObject(objectid, Float:X, Float:Y, Float:Z, Float:S)
+{
+	#if !defined NO_OBJECTS_MOVE
+		if (Object_IsValid(objectid))
+		{
+			if (xor:(YSI_g_sObjects[objectid][E_OBJECT_MODEL] & e_OBJ_FLAG_MOVED1) == xor:(YSI_g_sObjects[objectid][E_OBJECT_MODEL] & e_OBJ_FLAG_MOVED2))
+			{
+				YSI_g_sObjects[objectid][E_OBJECT_MODEL] ^= e_OBJ_FLAG_MOVED;
+			}
+			else
+			{
+				YSI_g_sObjects[objectid][E_OBJECT_MODEL] &= ~e_OBJ_FLAG_MOVED;
+				YSI_g_sObjects[objectid][E_OBJECT_MODEL] |= e_OBJ_FLAG_MOVED1;
+			}
+			YSI_g_sObjects[objectid][E_OBJECT_MX] = X;
+			YSI_g_sObjects[objectid][E_OBJECT_MY] = Y;
+			YSI_g_sObjects[objectid][E_OBJECT_MZ] = Z;
+			YSI_g_sObjects[objectid][E_OBJECT_MS] = S;
+			Object_RemoveFromSector(YSI_g_sObjects[objectid][E_OBJECT_SECTOR], objectid);
+			Object_AddToMovingList(objectid);
+			return 1;
+		}
+	#else
+		#pragma unused objectid, X, Y, Z, S
+	#endif
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	StopDynamicObject
+Params:
+	objectid - Object to stop.
+Return:
+	-
+Notes:
+	Stops an object and reassigns it's sector.
+-*----------------------------------------------------------------------------*/
+
+stock StopDynamicObject(objectid)
+{
+	Object_RemoveFromSector(OBJECT_NO_SECTOR, objectid);
+	new
+		sector;
+	sector = Object_FindSector(YSI_g_sObjects[objectid][E_OBJECT_X], YSI_g_sObjects[objectid][E_OBJECT_Y]);
+	if (sector == OBJECT_NO_SECTOR) Object_AddToOOB(objectid);
+	else Object_AddToSector(sector, objectid);
+	YSI_g_sObjects[objectid][E_OBJECT_MODEL] &= ~(e_OBJ_FLAG_MOVED);
+	YSI_g_sObjects[objectid][E_OBJECT_MODEL] |= e_OBJ_FLAG_RECREATED;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Object_Loop
+Params:
+	-
+Return:
+	-
+Notes:
+	Checks what objects are in the player's range repeatedly to stream them
+	as required.  Only checks objects near the player, based on sectors, and
+	moving objects which are handled as their own 'sector'.  If the player is
+	near the edge of the grid (+/-OBJECT_BOUNDS x/y) OOB objects are also checked, only
+	one sector is used for all those regardless of location.  Moving objects
+	and already visible objects are assumed higher priority.
+-*----------------------------------------------------------------------------*/
+
+public Object_Loop()
+{
+	static
+		sPlayerObjects[MAX_PLAYERS][MAY_OBJECTS],
+		#if !defined NO_OBJECTS_MOVE
+			Float:s_fTime,
+		#endif
+		Bit:playersConnected[Bit_Bits(MAX_PLAYERS)];
+	#if !defined NO_OBJECTS_MOVE
+		new
+			Float:tick = float(GetTickCount()) / 1000.0,
+			Float:fTime = tick - s_fTime;
+		for (new objectid = 0; objectid < MAX_DYN_OBJECTS; objectid++) if (YSI_g_sObjects[objectid][E_OBJECT_MODEL] & e_OBJ_FLAG_MOVED) Object_Update(objectid, fTime);
+		s_fTime = tick;
+	#endif
+	for (new playerid = 0; playerid < MAX_PLAYERS; playerid++)
+	{
+		if (!IsPlayerConnected(playerid))
+		{
+			if (!Bit_Get(playersConnected, playerid))
+			{
+				for (new objectid = 0; objectid < MAY_OBJECTS; objectid++)
+				{
+					sPlayerObjects[playerid][objectid] = NO_OBJECT;
+				}
+			}
+			Bit_Set(playersConnected, playerid, 1);
+			continue;
+		}
+		Bit_Set(playersConnected, playerid, 0);
+		new
+			Float:x,
+			Float:y,
+			Float:z,
+			world = GetPlayerVirtualWorld(playerid),
+			sectors[OBJECT_VIEW_SECTORS];
+		GetPlayerPos(playerid, x, y, z);
+		if (Object_FindSectors(x, y, sectors))
+		{
+			new
+				i,
+				j,
+				Bit:objects[OBJECT_BITS],
+				count,
+				others;
+			Object_ParseExisting(playerid, x, y, z, sPlayerObjects[playerid], count, objects, world);
+			Object_ParseSet(playerid, YSI_g_sMovingObjects, sPlayerObjects[playerid], count, objects, x, y, z, world);
+			while (count < MAY_OBJECTS && i < OBJECT_VIEW_SECTORS)
+			{
+				j = sectors[i++];
+				if (j >= OBJECT_SECTOR_ARRAY)
+				{
+					if (others) continue;
+					Object_ParseSet(playerid, YSI_g_sOtherSector, sPlayerObjects[playerid], count, objects, x, y, z, world);
+					others = 1;
+				}
+				else Object_ParseSet(playerid, YSI_g_sObjectSectors[j], sPlayerObjects[playerid], count, objects, x, y, z, world);
+			}
+		}
+	}
+	for (new objectid = 0; objectid < MAX_DYN_OBJECTS; objectid++) YSI_g_sObjects[objectid][E_OBJECT_MODEL] &= ~(e_OBJ_FLAG_ATTACHED | e_OBJ_FLAG_JUMPED | e_OBJ_FLAG_ROTATED | e_OBJ_FLAG_RECREATED);
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Object_ParseSet
+Params:
+	playerid - Player to check for.
+	set - Pointer to first object in the list.
+	playerObjects[MAY_OBJECTS] - Data on visible objects.
+	&count - Count of visible objects.
+	Bit:objects[OBJECT_BITS] - Bit array of visibility of all objects.
+	Float:x - Player's x position.
+	Float:y - Player's y position.
+	Float:z - Player's z position.
+	world - Player's world.
+Return:
+	-
+Notes:
+	Itterates through the linked list for one sector of objects and checks
+	their real location relative to the player, if in range displays them.
+-*----------------------------------------------------------------------------*/
+
+Object_ParseSet(playerid, set, playerObjects[MAY_OBJECTS], &count, Bit:objects[OBJECT_BITS], Float:x, Float:y, Float:z, world)
+{
+	if (set == NO_OBJECT || count >= MAY_OBJECTS) return;
+	new
+		start = set;
+	do
+	{
+		new
+			e_OBJ_FLAG:flag = YSI_g_sObjects[set][E_OBJECT_MODEL];
+		if (!Bit_Get(objects, set) && flag & e_OBJ_FLAG_ACTIVE)
+		{
+			if (Object_HasPlayer(set, playerid, world) && Object_GetDifferenceXY(set, x, y, z) < OBJECT_SIGHT)
+			{
+				new
+					obj = CreatePlayerObject(playerid, flag & e_OBJ_FLAG_MODEL, YSI_g_sObjects[set][E_OBJECT_X], YSI_g_sObjects[set][E_OBJECT_Y], YSI_g_sObjects[set][E_OBJECT_Z], YSI_g_sObjects[set][E_OBJECT_RX], YSI_g_sObjects[set][E_OBJECT_RY], YSI_g_sObjects[set][E_OBJECT_RZ]);
+				if (obj == 0xFF) goto next_obj;
+				count++;
+				Bit_Set(objects, set, 1);
+				playerObjects[obj - 1] = set;
+				#if !defined NO_OBJECTS_MOVE
+					if (flag & e_OBJ_FLAG_MOVED)
+					{
+						MovePlayerObject(playerid, obj, YSI_g_sObjects[set][E_OBJECT_MX], YSI_g_sObjects[set][E_OBJECT_MY], YSI_g_sObjects[set][E_OBJECT_MZ], YSI_g_sObjects[set][E_OBJECT_MS]);
+						playerObjects[obj] |= _:(flag & e_OBJ_FLAG_MOVED);
+					}
+					else
+				#endif
+				if (Object_GetAttach(flag) != NO_ATTACH_PLAYER) AttachPlayerObjectToPlayer(playerid, obj, Object_GetAttach(flag), YSI_g_sObjects[set][E_OBJECT_X], YSI_g_sObjects[set][E_OBJECT_Y], YSI_g_sObjects[set][E_OBJECT_Z], YSI_g_sObjects[set][E_OBJECT_RX], YSI_g_sObjects[set][E_OBJECT_RY], YSI_g_sObjects[set][E_OBJECT_RZ]);
+			}
+		}
+		next_obj:
+		set = YSI_g_sObjects[set][E_OBJECT_NEXT];
+	}
+	while (set != start && count < MAY_OBJECTS);
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Object_FindSectors
+Params:
+	Float:x - X location to check.
+	Float:y - Y location to check.
+	sectors[OBJECT_VIEW_SECTORS] - Array to store all visible sectors.
+Return:
+	-
+Notes:
+	Finds all the sectors which encompas points within the sight range of the
+	player.  Initial checks are done as a square so some returned sectors may
+	not have points within a circular range of the player.
+	
+	The original version tested if the edges of each sector were visible and
+	if not excluded them from the list.  This would have been faster in terms
+	of objects checked but slower if there were no objects, which is likely to
+	be more frequently the case.  The code also didn't actually work but that's
+	a minor point as the theory was there.  This is also alot neater.
+-*----------------------------------------------------------------------------*/
+
+Object_FindSectors(Float:x, Float:y, sectors[OBJECT_VIEW_SECTORS])
+{
+	sectors[0] = Object_FindSector(x, y);
+	new
+		k = 1;
+	for (new i = -OBJECT_VIEW_RATIO; i <= OBJECT_VIEW_RATIO; i++)
+	{
+		for (new j = -OBJECT_VIEW_RATIO; j <= OBJECT_VIEW_RATIO; j++)
+		{
+			if (!i && !j) continue;
+			sectors[k++] = Object_FindSector(x + (i * OBJECT_SECTOR_SIZE), y + (j * OBJECT_SECTOR_SIZE));
+		}
+	}
+	while (k < OBJECT_VIEW_SECTORS) sectors[k++] = NO_SECTOR;
+	return 1;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Object_IsValidModel
+Params:
+	modelid - Model to check won't crash SA.
+Return:
+	-
+Notes:
+	I wrote this function a long time ago and have barely updated it at all.
+	The only changes are the formatting and the use of the Bit class now,
+	despite the fact this was the first large bit array I did and is thus
+	the founding array of the whole idea behind the bit class.
+-*----------------------------------------------------------------------------*/
+
+stock Object_IsValidModel(modelid)
+{
+	static
+		modeldat[] =
+		{
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -128,
+			-515899393, -134217729, -1, -1, 33554431, -1, -1, -1, -14337, -1, -33,
+			127, 0, 0, 0, 0, 0, -8388608, -1, -1, -1, -16385, -1, -1, -1, -1, -1,
+			-1, -1, -33, -1, -771751937, -1, -9, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+			-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+			-1, -1, -1, -1, -1, -1, -1, -1, 33554431, -25, -1, -1, -1, -1, -1, -1,
+			-1073676289, -2147483648, 34079999, 2113536, -4825600, -5, -1, -3145729,
+			-1, -16777217, -63, -1, -1, -1, -1, -201326593, -1, -1, -1, -1, -1,
+			-257, -1, 1073741823, -133122, -1, -1, -65, -1, -1, -1, -1, -1, -1,
+			-2146435073, -1, -1, -1, -1, -1, -1, -1, -1, -1, 1073741823, -64, -1,
+			-1, -1, -1, -2635777, 134086663, 0, -64, -1, -1, -1, -1, -1, -1, -1,
+			-536870927, -131069, -1, -1, -1, -1, -1, -1, -1, -1, -16384, -1,
+			-33554433, -1, -1, -1, -1, -1, -1610612737, 524285, -128, -1,
+			2080309247, -1, -1, -1114113, -1, -1, -1, 66977343, -524288, -1, -1, -1,
+			-1, -2031617, -1, 114687, -256, -1, -4097, -1, -4097, -1, -1,
+			1010827263, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -32768, -1, -1, -1, -1, -1,
+			2147483647, -33554434, -1, -1, -49153, -1148191169, 2147483647,
+			-100781080, -262145, -57, 134217727, -8388608, -1, -1, -1, -1, -1, -1,
+			-1, -1, -1, -1, -1, -1, -1, -1, -1048577, -1, -449, -1017, -1, -1, -1,
+			-1, -1, -1, -1, -1, -1, -1, -1, -1835009, -2049, -1, -1, -1, -1, -1, -1,
+			-8193, -1, -536870913, -1, -1, -1, -1, -1, -87041, -1, -1, -1, -1, -1,
+			-1, -209860, -1023, -8388609, -2096897, -1, -1048577, -1, -1, -1, -1,
+			-1, -1, -897, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1610612737,
+			-3073, -28673, -1, -1, -1, -1537, -1, -1, -13, -1, -1, -1, -1, -1985,
+			-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1056964609, -1, -1, -1,
+			-1, -1, -1, -1, -2, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+			-236716037, -1, -1, -1, -1, -1, -1, -1, -536870913, 3, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+			-1, -1, -1, -1, -1, -2097153, -2109441, -1, 201326591, -4194304, -1, -1,
+			-241, -1, -1, -1, -1, -1, -1, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, -32768, -1, -1, -1, -2, -671096835, -1, -8388609, -66323585, -13,
+			-1793, -32257, -247809, -1, -1, -513, 16252911, 0, 0, 0, -131072,
+			33554383, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+			-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 8356095, 0, 0, 0, 0, 0,
+			0, -256, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+			-268435449, -1, -1, -2049, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+			92274627, -65536, -2097153, -268435457, 591191935, 1, 0, -16777216, -1,
+			-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 127
+		};
+	return Bit_Get(Bit:modeldat, modelid);
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Object_OnPlayerDisconnect
+Params:
+	playerid - Player who left.
+	reason - Why they left.
+Return:
+	-
+Notes:
+	Just to automatically disconnect attached objects from players.
+-*----------------------------------------------------------------------------*/
+
+Object_OnPlayerDisconnect(playerid, reason)
+{
+	new
+		set = YSI_g_sMovingObjects;
+	if (set == NO_OBJECT) return 0;
+	new
+		start = set;
+	do
+	{
+		new
+			e_OBJ_FLAG:flag = YSI_g_sObjects[set][E_OBJECT_MODEL];
+		if (flag & e_OBJ_FLAG_ACTIVE)
+		{
+			if (Object_GetAttach(flag) == playerid) DetachDynamicObjectFromPlayer(set);
+		}
+		set = YSI_g_sObjects[set][E_OBJECT_NEXT];
+	}
+	while (set != start	);
+	return 1;
+	#pragma unused reason
+}

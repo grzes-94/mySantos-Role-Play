@@ -1,0 +1,97 @@
+<ips:template parameters="$chars,$charss,$app" />
+{parse striping="fetchRows" classes="row1,row2"}
+{parse template="characterTabs" group="msrp"}
+<div class="ipsVerticalTabbed_content ipsLayout_content ipsBox_container">
+<div class="ipsPad">
+<table class="ipb_table report_center">
+<tbody>
+<tr class="header">
+<td scope="col" style="font-weight: bold;" align="center" colspan="7">
+Posiadane postacie
+</td>
+</tr>
+<if test="count($chars)">
+<foreach loop="$chars as $row">
+<tr class="{parse striping="fetchRows"}">
+              <td id="p_skin">
+                <a href="index.php?app=msrp&module=character&section=showchar&uid={$row['player_uid']}">
+                  <if test="$row['hide'] == 0">
+                    <if test="$row['skin' ]<= 311">
+                    <img src="public/skins/Skin_{$row['skin'] }.png" height="60px">
+                      <else />
+                    <img src="public/skins/Skin_custom.png" height="60px">
+                  </if>
+                    <else />
+                    <img src="public/skins/hide.png" height="60px">
+                  </if>
+                </a>
+              </td>
+              <td id="p_nick">
+                <a href="index.php?app=msrp&module=character&section=showchar&uid={$row['player_uid']}">
+                  <p id="p_nickname">{$row['nickname']}</p>
+                </a>
+                <p id="p_uid">UID: {$row['player_uid']} </p>
+              </td>
+              <td id="p_time">
+                <img src="public/icons/clock.png" width="10px"> {$row['hours']} h {$row['minutes']} min<br />
+                <img src="public/icons/money.png" width="10px"> {$row['cash']}$<br />
+                <img src="public/icons/bank.png" width="10px"> {$row['credit']}$
+              </td>
+              <td>{$row['status']}</td>
+              <td class="short">
+                <form method="post" action="index.php?app=msrp&module=character&uid={$row['player_uid']}"><input type="submit" class="ipsButton_secondary ipsType_smaller" name="hideChar" value="<if test="$row['hide'] == 1">Pokaż<else />Ukryj</if> postać"> </form>
+              </td>
+            </tr>
+          </foreach>
+          <else />
+          <div style="padding-top:10px;padding-left:10px;padding-right:10px;padding-bottom:20px;">
+            <div class="message error">
+              Nie posiadasz jeszcze żadnej postaci. Przejdź do zakładki "<a href="index.php?app=msrp&module=character&section=createchar">Załóż postać</a>" aby ją stworzyć.
+            </div>
+          </div>
+        </if>
+        </tbody>
+      </table>
+      <br>
+      <center>
+        <a id="button_newchar" href="index.php?app=msrp&module=character&section=createchar">Załóż nową postać</a>
+      </center>
+
+      <br>
+      <br>
+
+    </div>
+  </div>
+
+
+  <style>
+  #p_skin{
+    padding-left:10px;
+    padding-bottom:5px;
+    padding-right: 0px;
+  }
+  #p_nickname{
+    font-weight: bold;
+    font-size: 12pt;
+    padding-left: 0px;
+  }
+  #p_uid
+  {
+    padding-top: 5px;
+    font-style: italic;
+  }
+  #button_newchar
+  {
+    background: #212121 url(/public/style_images/master/topic_button.png) repeat-x top;
+    text-decoration: none;
+    border-width: 1px;
+    border-style: solid;
+    padding: 4px 10px;
+    cursor: pointer;
+    border-radius: 3px;
+    box-shadow: inset 0 1px 0 0 #5c5c5c, 0px 2px 3px rgba(0,0,0,0.2);
+    border-color: #212121;
+    font: normal 13px helvetica,arial,sans-serif;
+    color: #FFFFFF;
+  }
+  </style>

@@ -1,0 +1,35 @@
+<ips:template parameters="$pagination, $logs" />
+{parse striping="fetchRows" classes="row1,row2"}
+<div class="maintitle ipsFilterbar clear clearfix">
+<ul class="ipsList_inline left">
+{parse template="adminTabs" group="msrp"}
+</ul>
+</div>
+<div class="ipsVerticalTabbed_content ipsLayout_content ipsBox_container">
+<div class="ipsPad">
+<table class="ipb_table report_center">
+<tbody>
+<tr class="header">
+<td scope="col" class="short">Postać</td>
+<td scope="col" class="short">Gracz</td>
+<td scope="col" class="short">IP</td>
+<td scope="col" class="short">Typ odrzucenia</td>
+<td scope="col" class="short">Czas</td>
+</tr>
+<if test="count($logs)">
+<foreach loop="$logs as $row">
+<tr class="{parse striping="fetchRows"}">
+              <td class="short">{$row['player_uid']}</td>
+              <td class="short">{$row['player_gid']}</td>
+              <td class="short">{$row['ip']}</td>
+              <td class="short">{$row['reason']}</td>
+              <td class="short">{parse date="$row['time']" format="long"}</td>
+            </tr>
+          </foreach>
+        </if>
+
+      </tbody>
+    </table>
+    <div style="float:right;">{$pagination}</div>
+  </div>
+</div>

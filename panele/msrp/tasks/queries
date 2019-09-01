@@ -1,0 +1,19 @@
+SELECT * FROM `panel_admins_online` WHERE `date` BETWEEN (CURDATE() - INTERVAL 1 WEEK) AND (CURDATE() - INTERVAL 1 DAY)
+
+
+SELECT DISTINCT `player_uid` AS puid,  `global_id` 
+(SELECT online FROM `panel_admins_online` WHERE `player_uid` = puid AND `date` > (CURDATE() - INTERVAL 23 HOUR) LIMIT 1) as d1, 
+
+(SELECT online FROM `panel_admins_online` WHERE `player_uid` = puid AND `date` BETWEEN (CURDATE() - INTERVAL 1 DAY) AND (CURDATE() - INTERVAL 2 DAY) LIMIT 1) as d2
+
+(SELECT online FROM `panel_admins_online` WHERE `player_uid` = puid AND `date` BETWEEN (CURDATE() - INTERVAL 2 DAY) AND (CURDATE() - INTERVAL 3 DAY) LIMIT 1) as d3
+
+(SELECT online FROM `panel_admins_online` WHERE `player_uid` = puid AND `date` BETWEEN (CURDATE() - INTERVAL 3 DAY) AND (CURDATE() - INTERVAL 4 DAY) LIMIT 1) as d4
+
+(SELECT online FROM `panel_admins_online` WHERE `player_uid` = puid AND `date` BETWEEN (CURDATE() - INTERVAL 4 DAY) AND (CURDATE() - INTERVAL 5 DAY) LIMIT 1) as d5
+
+(SELECT online FROM `panel_admins_online` WHERE `player_uid` = puid AND `date` BETWEEN (CURDATE() - INTERVAL 5 DAY) AND (CURDATE() - INTERVAL 6 DAY) LIMIT 1) as d6
+
+(SELECT online FROM `panel_admins_online` WHERE `player_uid` = puid AND `date` BETWEEN (CURDATE() - INTERVAL 6 DAY) AND (CURDATE() - INTERVAL 7 DAY) LIMIT 1) as d7
+
+FROM panel_admins_online ORDER BY puid

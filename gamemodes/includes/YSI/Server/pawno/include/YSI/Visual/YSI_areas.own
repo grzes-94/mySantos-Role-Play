@@ -1,0 +1,805 @@
+/*----------------------------------------------------------------------------*-
+					=============================
+					Y Sever Includes - Areas Core
+					=============================
+Description:
+	Handles area checks for player location based code not involving CPs.
+Legal:
+	Copyright (C) 2007 Alex "Y_Less" Cole
+
+	This program is free software; you can redistribute it and/or
+	modify it under the terms of the GNU General Public License
+	as published by the Free Software Foundation; either version 2
+	of the License, or (at your option) any later version.
+
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with this program; if not, write to the Free Software
+	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+	MA 02110-1301, USA.
+Changelog:
+	08/05/07:
+		First version.
+Functions:
+	Public:
+		-
+	Core:
+		-
+	Stock:
+		-
+	Static:
+		-
+	Inline:
+		-
+	API:
+		-
+Definitions:
+	-
+Enums:
+	-
+Macros:
+	-
+Tags:
+	-
+Variables:
+	Global:
+		-
+	Static:
+		-
+Commands:
+	-
+Compile options:
+	-
+Operators:
+	-
+-*----------------------------------------------------------------------------*/
+
+#if !defined MAX_AREAS
+	#define MAX_AREAS 64
+#endif
+
+#if !defined AREA_LOOP_GRANULARITY
+	#define AREA_LOOP_GRANULARITY 3
+#endif
+
+#define NO_AREA -1
+#define SINGLE_SLOT_AREA e_AREA_FLAGS_NEXT
+#define AREA_NO_NEXT (_:e_AREA_FLAGS_NEXT)
+
+#if !defined AREA_WORLDS
+	#define AREA_WORLDS 256
+#endif
+
+#if AREA_WORLDS > 32
+	#define AREA_WORLD_COUNT Bit_Bits(AREA_WORLDS)
+#else
+	#define AREA_WORLD_COUNT 2
+#endif
+
+enum e_AREA_FLAGS (<<= 1)
+{
+	e_AREA_FLAGS_NEXT = 0x0000FFFF,
+	e_AREA_FLAGS_COUNT = 0x00FF0000,
+	e_AREA_FLAGS_SPHERE = 0x01000000,
+	e_AREA_FLAGS_CIRCLE,
+	e_AREA_FLAGS_POLY,
+	e_AREA_FLAGS_CUBE,
+	e_AREA_FLAGS_BOX,
+	e_AREA_FLAGS_ACTIVE
+}
+
+enum E_AREA
+{
+	e_AREA_FLAGS:E_AREA_FLAGS,
+	#if AREA_WORLDS > 0
+		Bit:E_AREA_WORLDS[AREA_WORLD_COUNT],
+	#endif
+	Bit:E_AREA_PLAYERS[PLAYER_BIT_ARRAY],
+	Float:E_AREA_POS[4]
+}
+
+static
+	YSI_g_sUnusedAreas,
+	YSI_g_sLastUnused = MAX_AREAS - 1,
+	YSI_g_sFreeCount = MAX_AREAS,
+	YSI_g_sAreas[MAX_AREAS][E_AREA],
+	YSI_g_sPlayerArea[MAX_PLAYERS];
+
+#if MAX_AREAS >= 0xFFFF
+	#error This version does not support more than 65535 areas
+#endif
+
+forward Area_Loop();
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Area_GetEmptySlotCount
+Params:
+	-
+Return:
+	Number of unused area slots.
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+#define Area_GetEmptySlotCount() \
+	(YSI_g_sFreeCount)
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Area_AddSlots
+Params:
+	num - Number of slots to add.
+Return:
+	-
+Notes:
+	Actually removes slots from the unused count.
+-*----------------------------------------------------------------------------*/
+
+#define Area_AddSlots(%1) \
+	YSI_g_sFreeCount -= (%1)
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Area_IsValid
+Params:
+	area - Area to check validity of
+Return:
+	-
+Notes:
+	An area slot could be used but still invalid if it's not the first slot in
+	an area set.
+-*----------------------------------------------------------------------------*/
+
+#define Area_IsValid(%1) \
+ ((%1) >= 0 && (%1) < MAX_AREAS && (YSI_g_sAreas[(%1)][E_AREA_FLAGS] & e_AREA_FLAGS_ACTIVE))
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Area_GetFreeSlot
+Params:
+	-
+Return:
+	Next available slot.
+Notes:
+	Gets an empty slot, removes it from the unused list and returs a pointer.
+-*----------------------------------------------------------------------------*/
+
+static stock Area_GetFreeSlot()
+{
+	if (YSI_g_sUnusedAreas == NO_AREA) return NO_AREA;
+	new
+		old = YSI_g_sUnusedAreas,
+		next = YSI_g_sAreas[old][E_AREA_FLAGS];
+	if (next == old)
+	{
+		YSI_g_sUnusedAreas = NO_AREA;
+		YSI_g_sLastUnused = NO_AREA;
+	}
+	else
+	{
+		YSI_g_sUnusedAreas = next;
+		YSI_g_sAreas[YSI_g_sLastUnused][E_AREA_FLAGS] = e_AREA_FLAGS:next;
+	}
+	YSI_g_sFreeCount--;
+	return old;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Area_Delete
+Params:
+	area - Area to remove from the list.
+Return:
+	-
+Notes:
+	You can only remove areas which are at the start of a list.
+-*----------------------------------------------------------------------------*/
+
+stock Area_Delete(area)
+{
+	if (!Area_IsValid(area)) return 0;
+	do
+	{
+		new
+			next = _:(YSI_g_sAreas[area][E_AREA_FLAGS] & e_AREA_FLAGS_NEXT);
+		Area_AddToUnused(area);
+		area = next;
+	}
+	while (area != AREA_NO_NEXT);
+	return 1;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Area_AddToUnused
+Params:
+	area - Slot to make unused.
+Return:
+	-
+Notes:
+	Removes any slot regardless, pointers to it must be updated manually.
+-*----------------------------------------------------------------------------*/
+
+static stock Area_AddToUnused(area)
+{
+	if (YSI_g_sUnusedAreas == NO_AREA)
+	{
+		YSI_g_sUnusedAreas = area;
+		YSI_g_sLastUnused = area;
+		YSI_g_sAreas[area][E_AREA_FLAGS] = e_AREA_FLAGS:area;
+	}
+	else
+	{
+		YSI_g_sAreas[area][E_AREA_FLAGS] = e_AREA_FLAGS:YSI_g_sUnusedAreas;
+		YSI_g_sAreas[YSI_g_sLastUnused][E_AREA_FLAGS] = e_AREA_FLAGS:area;
+		YSI_g_sLastUnused = area;
+	}
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Area_AddCube
+Params:
+	Float:minx - Lowest X corner of box
+	Float:miny - Lowest Y corner of box.
+	Float:minx - Lowest Z corner of box.
+	Float:maxx - Highest X corner of box.
+	Float:maxy - Highest Y corner of box.
+	Float:maxz - Highest Z corner of box.
+Return:
+	Area slot or NO_AREA
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock Area_AddCube(Float:minx, Float:miny, Float:minz, Float:maxx, Float:maxy, Float:maxz)
+{
+	if (Area_GetEmptySlotCount() < 2) return NO_AREA;
+	new
+		slot = Area_GetFreeSlot(),
+		next = Area_GetFreeSlot();
+	YSI_g_sAreas[slot][E_AREA_FLAGS] = e_AREA_FLAGS_CUBE | e_AREA_FLAGS_ACTIVE | e_AREA_FLAGS:next;
+	YSI_g_sAreas[slot][E_AREA_POS][0] = minx;
+	YSI_g_sAreas[slot][E_AREA_POS][1] = miny;
+	YSI_g_sAreas[slot][E_AREA_POS][2] = minz;
+	YSI_g_sAreas[next][E_AREA_FLAGS] = SINGLE_SLOT_AREA;
+	YSI_g_sAreas[next][E_AREA_POS][0] = maxx;
+	YSI_g_sAreas[next][E_AREA_POS][1] = maxy;
+	YSI_g_sAreas[next][E_AREA_POS][2] = maxz;
+	return slot;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Area_AddBox
+Params:
+	Float:minx - Lowest X corner of box
+	Float:miny - Lowest Y corner of box.
+	Float:maxx - Highest X corner of box.
+	Float:maxy - Highest Y corner of box.
+Return:
+	Area slot or NO_AREA
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock Area_AddBox(Float:minx, Float:miny, Float:maxx, Float:maxy)
+{
+	new
+		slot = Area_GetFreeSlot();
+	if (slot == NO_AREA) return NO_AREA;
+	YSI_g_sAreas[slot][E_AREA_FLAGS] = SINGLE_SLOT_AREA | e_AREA_FLAGS_BOX | e_AREA_FLAGS_ACTIVE;
+	YSI_g_sAreas[slot][E_AREA_POS][0] = minx;
+	YSI_g_sAreas[slot][E_AREA_POS][1] = miny;
+	YSI_g_sAreas[slot][E_AREA_POS][2] = maxx;
+	YSI_g_sAreas[slot][E_AREA_POS][3] = maxy;
+	return slot;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Area_AddCircle
+Params:
+	Float:x - X position of circle.
+	Float:y - Y position of circle.
+	Float:r - Radius of circle.
+	Float:h - Ceiling of circle.
+Return:
+	Area slot or NO_AREA
+Notes:
+	Technically a cylinder, no lower bound (ceiling added cos there was a
+	spare slot in the 4 float design which may as well have been used).
+-*----------------------------------------------------------------------------*/
+
+stock Area_AddCircle(Float:x, Float:y, Float:r, Float:h = 10000.0)
+{
+	new
+		slot = Area_GetFreeSlot();
+	if (slot == NO_AREA) return NO_AREA;
+	YSI_g_sAreas[slot][E_AREA_FLAGS] = SINGLE_SLOT_AREA | e_AREA_FLAGS_CIRCLE | e_AREA_FLAGS_ACTIVE;
+	YSI_g_sAreas[slot][E_AREA_POS][0] = x;
+	YSI_g_sAreas[slot][E_AREA_POS][1] = y;
+	YSI_g_sAreas[slot][E_AREA_POS][2] = r * r;
+	YSI_g_sAreas[slot][E_AREA_POS][3] = h;
+	return slot;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Area_AddSphere
+Params:
+	Float:x - X position of sphere.
+	Float:y - Y position of sphere.
+	Float:z - Z position of sphere.
+	Float:r - Radius of sphere.
+Return:
+	Area slot or NO_AREA
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock Area_AddSphere(Float:x, Float:y, Float:z, Float:r)
+{
+	new
+		slot = Area_GetFreeSlot();
+	if (slot == NO_AREA) return NO_AREA;
+	YSI_g_sAreas[slot][E_AREA_FLAGS] = SINGLE_SLOT_AREA | e_AREA_FLAGS_SPHERE | e_AREA_FLAGS_ACTIVE;
+	YSI_g_sAreas[slot][E_AREA_POS][0] = x;
+	YSI_g_sAreas[slot][E_AREA_POS][1] = y;
+	YSI_g_sAreas[slot][E_AREA_POS][2] = z;
+	YSI_g_sAreas[slot][E_AREA_POS][3] = r * r;
+	return slot;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Area_AddPoly
+Params:
+	Float:... - X/Ys of points
+Return:
+	Area slot or NO_AREA
+Notes:
+	Creates an irregular shape to detect players in.  This is a 2d area made
+	up of a load of XY points.  If an odd number of parameters is passed the
+	extra one is assumed to be a ceiling so you can ignore interiors or planes.
+	
+	Checks that there is enough space to store the data first (as the array
+	is split up into 4 float sections for general efficiency) so this check
+	uses at least 2 slots (smallest 2d shape is a triangle - 3 points, 6 co-
+	ordinates, 2 slots).
+	
+	The height parameter goes first as it's easiest to check.
+-*----------------------------------------------------------------------------*/
+
+stock Area_AddPoly(Float:x1, Float:y1, Float:x2, Float:y2, Float:x3, Float:y3, Float:...)
+{
+	new
+		count = numargs();
+	if (count > 255) return NO_AREA;
+	if (Area_GetEmptySlotCount() < ceildiv(count, 4)) return NO_AREA;
+	new
+		done,
+		slot = 4,
+		real = -1,
+		first;
+	if (isodd(count))
+	{
+		real = Area_GetFreeSlot();
+		YSI_g_sAreas[real][E_AREA_FLAGS] = SINGLE_SLOT_AREA;
+		YSI_g_sAreas[real][E_AREA_POS][0] = Float:getarg(--count);
+		slot = 2;
+	}
+	while (done < count)
+	{
+		if (slot == 4)
+		{
+			new
+				next = Area_GetFreeSlot();
+			if (real != -1)
+			{
+				YSI_g_sAreas[real][E_AREA_FLAGS] = e_AREA_FLAGS:next;
+			}
+			else first = next;
+			real = next;
+			YSI_g_sAreas[real][E_AREA_FLAGS] = SINGLE_SLOT_AREA;
+			slot = 0;
+		}
+		if (done < 2)
+		{
+			YSI_g_sAreas[real][E_AREA_POS][slot++] = x1;
+			YSI_g_sAreas[real][E_AREA_POS][slot++] = y1;
+			done += 2;
+		}
+		else if (done < 4)
+		{
+			YSI_g_sAreas[real][E_AREA_POS][slot++] = x2;
+			YSI_g_sAreas[real][E_AREA_POS][slot++] = y2;
+			done += 2;
+		}
+		else if (done < 6)
+		{
+			YSI_g_sAreas[real][E_AREA_POS][slot++] = x3;
+			YSI_g_sAreas[real][E_AREA_POS][slot++] = y3;
+			done += 2;
+		}
+		else
+		{
+			YSI_g_sAreas[real][E_AREA_POS][slot++] = Float:getarg(done++);
+			YSI_g_sAreas[real][E_AREA_POS][slot++] = Float:getarg(done++);
+		}
+	}
+	YSI_g_sAreas[first][E_AREA_FLAGS] |= e_AREA_FLAGS_POLY | e_AREA_FLAGS_ACTIVE | ((e_AREA_FLAGS:(count << 16)) & e_AREA_FLAGS_COUNT);
+	return first;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Area_Area
+Params:
+	-
+Return:
+	-
+Notes:
+	Sets up required variables.
+-*----------------------------------------------------------------------------*/
+
+Area_Area()
+{
+	new i;
+	while (i < MAX_AREAS - 1)
+	{
+		YSI_g_sAreas[i++][E_AREA_FLAGS] = e_AREA_FLAGS:i;
+	}
+	i = 0;
+	while (i < MAX_PLAYERS) YSI_g_sPlayerArea[i++] = NO_AREA;
+	SetTimer("Area_Loop", 1000 / AREA_LOOP_GRANULARITY, 1);
+	return 1;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Area_loop
+Params:
+	-
+Return:
+	-
+Notes:
+	Main processing for the system, loops through players and areas to check
+	their area periodically.
+-*----------------------------------------------------------------------------*/
+
+public Area_Loop()
+{
+	for (new playerid = 0; playerid < MAX_PLAYERS; playerid++)
+	{
+		if (!IsPlayerConnected(playerid))
+		{
+			YSI_g_sPlayerArea[playerid] = NO_AREA;
+			continue;
+		}
+		new
+			Float:x,
+			Float:y,
+			Float:z,
+			area = YSI_g_sPlayerArea[playerid],
+			world = GetPlayerVirtualWorld(playerid);
+		GetPlayerPos(playerid, x, y, z);
+		if (area != NO_AREA)
+		{
+			if (Area_CheckArea(playerid, world, area, x, y, z)) continue;
+			YSI_g_sPlayerArea[playerid] = NO_AREA;
+			CallRemoteFunction("OnPlayerLeaveArea", "i", playerid);
+		}
+		for (area = 0; area < MAX_AREAS; area++)
+		{
+			if (Area_CheckArea(playerid, world, area, x, y, z))
+			{
+				YSI_g_sPlayerArea[playerid] = area;
+				CallRemoteFunction("OnPlayerEnterArea", "ii", playerid, area);
+				#if defined _YSI_GAMEMODE_PROPERTIES
+					Property_OnPlayerEnterArea(playerid, area);
+				#endif
+				break;
+			}
+		}
+	}
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Area_CheckArea
+Params:
+	playerid - Player being checked for.
+	world - VW the player is in.
+	area - Area to check against.
+	Float:x - X position to check.
+	Float:y - Y position to check.
+	Float:z - Z position to check.
+Return:
+	-
+Notes:
+	Checks if the given position is in the give area.  All parameters are
+	passed to avoid calling functions over and over and over again.
+-*----------------------------------------------------------------------------*/
+
+Area_CheckArea(playerid, world, area, Float:x, Float:y, Float:z)
+{
+	new
+		flags = _:YSI_g_sAreas[area][E_AREA_FLAGS];
+	if ((flags & _:e_AREA_FLAGS_ACTIVE))
+	{
+		#if AREA_WORLDS > 0
+			if (!Bit_Get(YSI_g_sAreas[area][E_AREA_WORLDS], world)) return 0;
+		#else
+			#pragma unused world
+		#endif
+		if (!Bit_Get(YSI_g_sAreas[area][E_AREA_PLAYERS], playerid)) return 0;
+		switch (flags & _:~(e_AREA_FLAGS_NEXT | e_AREA_FLAGS_COUNT | e_AREA_FLAGS_ACTIVE))
+		{
+			case e_AREA_FLAGS_CIRCLE:
+				if (Area_IsInCircle(x, y, z, YSI_g_sAreas[area][E_AREA_POS])) return 1;
+			case e_AREA_FLAGS_SPHERE:
+				if (Area_IsInSphere(x, y, z, YSI_g_sAreas[area][E_AREA_POS])) return 1;
+			case e_AREA_FLAGS_POLY:
+				if (Area_IsInPoly(x, y, z, area, (flags & _:e_AREA_FLAGS_COUNT) >> 16)) return 1;
+			case e_AREA_FLAGS_CUBE:
+				if (Area_IsInCube(x, y, z, YSI_g_sAreas[area][E_AREA_POS], YSI_g_sAreas[flags & _:e_AREA_FLAGS_NEXT][E_AREA_POS])) return 1;
+			case e_AREA_FLAGS_BOX:
+				if (Area_IsInBox(x, y, YSI_g_sAreas[area][E_AREA_POS])) return 1;
+		}
+	}
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Area_IsInCircle
+Params:
+	Float:x - X position to check.
+	Float:y - Y position to check.
+	Float:z - Z position to check.
+	Float:bounds[] - Data for the area position.
+Return:
+	-
+Notes:
+	Checks if a point is in a given circle.
+-*----------------------------------------------------------------------------*/
+
+Area_IsInCircle(Float:x, Float:y, Float:z, Float:bounds[])
+{
+	return (z < bounds[3] && (((bounds[0] - x) * (bounds[0] - x)) + ((bounds[1] - y) * (bounds[1] - y))) < bounds[2]);
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Area_IsInSphere
+Params:
+	Float:x - X position to check.
+	Float:y - Y position to check.
+	Float:z - Z position to check.
+	Float:bounds[] - Data for the area position.
+Return:
+	-
+Notes:
+	Checks if a point is in a given sphere.
+-*----------------------------------------------------------------------------*/
+
+Area_IsInSphere(Float:x, Float:y, Float:z, Float:bounds[])
+{
+	return ((((bounds[0] - x) * (bounds[0] - x)) + ((bounds[1] - y) * (bounds[1] - y)) + ((bounds[2] - z) * (bounds[2] - z))) < bounds[3]);
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Area_IsInPoly
+Params:
+	Float:x - X position to check.
+	Float:y - Y position to check.
+	Float:z - Z position to check.
+	pointer - Pointer to the start of the polygon data in the array.
+	count - Number of points in the polygon (x/y are counted separate).
+Return:
+	-
+Notes:
+	Based on IsPlayerInAreaEx by koolk in the useful functions topic.  The
+	passed pointer is the pointer to the first set of co-ordinates in a one-
+	way not looping linked list of points in the polygod as the data may be
+	spread throughout the areas array.  This is as otherwise there may be
+	enough free spaces but not in one block.
+	
+	The code first checks if there is a height component as it's the easiest
+	to check thus may save a load of pointless processing.  If this passes it
+	then does the main loop.  This loops till there are no points left to do
+	(monitored by decreasing count).  When 2 points (four pieces of data) have
+	been checked the poiner for the data is moved on to the next group and the
+	checking continues.
+	
+	For simplicity's sake (and thus speed's sake) the lower pointes from the
+	last check are saved amd used as the upper points for the next check to
+	avoid loads of repeated array accesses and saving the last array position.
+-*----------------------------------------------------------------------------*/
+
+Area_IsInPoly(Float:x, Float:y, Float:z, pointer, count)
+{
+	new
+		slot;
+	if (isodd(count))
+	{
+		if (YSI_g_sAreas[pointer][E_AREA_POS][0] < z) return 0;
+		slot = 2;
+		count--;
+	}
+	new
+		lines,
+		Float:fx = YSI_g_sAreas[pointer][E_AREA_POS][slot++],
+		Float:fy = YSI_g_sAreas[pointer][E_AREA_POS][slot++],
+		Float:minx = fx,
+		Float:miny = fy,
+		Float:maxx,
+		Float:maxy;
+	while (count)
+	{
+		if (slot == 4)
+		{
+			pointer = _:(YSI_g_sAreas[pointer][E_AREA_FLAGS] & e_AREA_FLAGS_NEXT);
+			slot = 0;
+		}
+		if (count == 2)
+		{
+			maxx = fx;
+			maxy = fy;
+		}
+		else
+		{
+			maxx = YSI_g_sAreas[pointer][E_AREA_POS][slot++];
+			maxy = YSI_g_sAreas[pointer][E_AREA_POS][slot++];
+		}
+		if (((y >= miny && y <= maxy) || (y >= maxy && y <= miny)) && (minx + ((y - miny) * (maxx - minx) / (maxy - miny))) < x) lines++;
+		count -= 2;
+		minx = maxx;
+		miny = maxy;
+	}
+	return isodd(lines);
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Area_IsInCube
+Params:
+	Float:x - X position to check.
+	Float:y - Y position to check.
+	Float:z - Z position to check.
+	Float:lower[] - The lower corner of the cube.
+	Float:upper[] - The upper corner of the cube.
+Return:
+	-
+Notes:
+	Checks if a point is in a given cube.  This is another multi slot shape
+	but is much simpler than the poly as it's always 2 slots so we can easilly
+	get the data in one lump.
+-*----------------------------------------------------------------------------*/
+
+Area_IsInCube(Float:x, Float:y, Float:z, Float:lower[], Float:upper[])
+{
+	return (x > lower[0] && x < upper[0] && y > lower[1] && y < upper[1] && z > lower[2] && z < upper[2]);
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Area_IsInBox
+Params:
+	Float:x - X position to check.
+	Float:y - Y position to check.
+	Float:bounds[] - Data for the area position.
+Return:
+	-
+Notes:
+	Checks if a point is in a given box.  There is no height check with this
+	one as any one area slot has 4 points which for this are upper and lower
+	x and y, adding a height check would make it require 2 slots and basically
+	make it a cube check.
+-*----------------------------------------------------------------------------*/
+
+Area_IsInBox(Float:x, Float:y, Float:bounds[])
+{
+	return (x > bounds[0] && x < bounds[2] && y > bounds[1] && y < bounds[3]);
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Area_GetPlayerArea
+Params:
+	playerid - Player to get area of.
+Return:
+	The area a player is in or -1.
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock Area_GetPlayerArea(playerid)
+{
+	return YSI_g_sPlayerArea[playerid]
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Area_SetPlayer
+Params:
+	area - Area to set for.
+	playerid - Player to set for.
+	set - Wether or not the player can use the area.
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock Area_SetPlayer(area, playerid, set)
+{
+	if (Area_IsValid(area)) Bit_Set(YSI_g_sAreas[area][E_AREA_PLAYERS], playerid, set);
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Area_SetWorld
+Params:
+	area - Area to set for.
+	world - World to set for.
+	set - Wether or not the area is active in this world.
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock Area_SetWorld(area, world, set)
+{
+	#if AREA_WORLDS > 0
+		if (Area_IsValid(area)) Bit_Set(YSI_g_sAreas[area][E_AREA_WORLDS], playerid, set);
+	#else
+		#pragma unused area, world, set
+	#endif
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Area_SetAllPlayers
+Params:
+	area - Area to set for.
+	set - Wether or not all players can use this area.
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock Area_SetAllPlayers(area, set)
+{
+	if (Area_IsValid(area)) Bit_SetAll(YSI_g_sAreas[area][E_AREA_PLAYERS], set);
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Area_SetAllWorlds
+Params:
+	area - Area to set for.
+	set - Wether or not this area is usable in all worlds.
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock Area_SetAllWorlds(area, set)
+{
+	#if AREA_WORLDS > 0
+		if (Area_IsValid(area)) Bit_SetAll(YSI_g_sAreas[area][E_AREA_WORLDS], set);
+	#else
+		#pragma unused area, set
+	#endif
+}

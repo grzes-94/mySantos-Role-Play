@@ -1,0 +1,140 @@
+<ips:template parameters="$guns" />
+{parse striping="fetchRows" classes="row1,row2"}
+<div class="maintitle ipsFilterbar clear clearfix">
+<ul class="ipsList_inline left">
+{parse template="adminTabs" group="msrp"}
+</ul>
+</div>
+<div class="ipsVerticalTabbed_content ipsLayout_content ipsBox_container">
+<div class="ipsPad">
+<div class="ipsVerticalTabbed_content ipsLayout_content gamehubMainContent">
+<table class="ipb_table report_center">
+<tbody>
+<tr class="header">
+<td scope="col" class="short">UID</td>
+<td scope="col" class="short">Nazwa</td>
+<td scope="col" class="short">Typ</td>
+<td scope="col" class="short">Ammo</td>
+<td scope="col" class="short">Typ właściciela</td>
+<td scope="col" class="short">Właściciel</td>
+</tr>
+<foreach loop="$guns as $gun">
+<tr class="{parse striping="fetchRows"}">
+              <php>
+                $ownertype=$gun['ownertyp'];
+                $owner=$gun['owner'];
+                switch($ownertype)
+                {
+                  case 0: //przedmiot odłożony
+                  {
+                    $this->DB->query('SELECT posx,posy,posz,world FROM `srv_items` WHERE `UID` = '.$gun['UID']);
+                    $item = $this->DB->fetch();
+                    $owner =  $item['posx'].' '.$item['posy'].' '.$item['posz'].' vw: '.$item['world'];
+                    $gun['owner'] = $owner;
+                    break;
+                  }
+                  case 1: //gracz
+                  {
+                    $this->DB->query('SELECT nickname FROM `srv_characters` WHERE `player_uid` = '.$owner);
+                    $player = $this->DB->fetch();
+                    $player['nickname'] = str_replace("_", " ", $player['nickname']);
+                    $owner =  '<a href="index.php?app=msrp&module=character&section=showchar&uid='.$owner.'">'.$player['nickname'].'</a>';
+                    $gun['owner'] =$owner;
+                    break;
+                  }
+                  case 2: //grupa - magazyn
+                  {
+                    $this->DB->query('SELECT name FROM `srv_groups` WHERE `UID` = '.$owner);
+                    $group = $this->DB->fetch();
+                    $gun['owner']= $group['name'];
+                    break;
+                  }
+                  case 11:
+                  {
+                    $this->DB->query('SELECT name FROM `srv_doors` WHERE `UID` = '.$owner);
+                    $door = $this->DB->fetch();
+                    $owner =  $owner.': '.$door['name'];
+                    $gun['owner'] =$owner;
+                    break;
+                  }
+                  case 15:
+                  {
+                    $this->DB->query('SELECT name FROM `srv_doors` WHERE `UID` = '.$owner);
+                    $door = $this->DB->fetch();
+                    $owner =  $owner.': '.$door['name'];
+                    $gun['owner']= $owner;
+                    break;
+                  }
+                  case 20:
+                  {
+                    $this->DB->query('SELECT model,ownertyp,owner FROM `srv_vehicles` WHERE `UID` = '.$owner);
+                    $veh = $this->DB->fetch();
+                    $model=$this->registry->getClass('functions')->getVehicleModelName($veh['model']);
+                    if($veh['ownertyp']==1)
+                    {
+                      $this->DB->query('SELECT nickname FROM `srv_characters` WHERE `player_uid` = '.$veh['owner']);
+                      $player = $this->DB->fetch();
+                      $player['nickname'] = str_replace("_", " ", $player['nickname']);
+
+                      $owner2 =  $owner.': '.$model.' <a href="index.php?app=msrp&module=character&section=showchar&uid='.$veh['owner'].'">'.$player['nickname'].'</a>';
+                      $gun['owner'] = $owner2;
+                    }
+                    else if($veh['ownertyp']==2)
+                    {
+                      $this->DB->query('SELECT name FROM `srv_groups` WHERE `UID` = '.$veh['owner']);
+                      $group = $this->DB->fetch();
+                      $owner = $owner.': '.$model.' '.$group['name'];
+                      $gun['owner'] = $owner;
+                    }
+                    else
+                    {
+                      $gun['owner'] = "INNY ".$owner;
+
+                    }
+                    break;
+                  }
+                  case 21: //bagażnik
+                  {
+                    $this->DB->query('SELECT model,ownertyp,owner FROM `srv_vehicles` WHERE `UID` = '.$owner);
+                    $veh = $this->DB->fetch();
+                    $model=$this->registry->getClass('functions')->getVehicleModelName($veh['model']);
+                    if($veh['ownertyp']==1)
+                    {
+                      $this->DB->query('SELECT nickname FROM `srv_characters` WHERE `player_uid` = '.$veh['owner']);
+                      $player = $this->DB->fetch();
+                      $player['nickname'] = str_replace("_", " ", $player['nickname']);
+
+                      $owner =  $owner.': '.$model.' <a href="index.php?app=msrp&module=character&section=showchar&uid='.$veh['owner'].'">'.$player['nickname'].'</a>';
+                      $gun['owner'] = $owner;
+                      break;
+
+                    }
+                    else if($veh['ownertyp']==2)
+                    {
+                      $this->DB->query('SELECT name FROM `srv_groups` WHERE `UID` = '.$veh['owner']);
+                      $group = $this->DB->fetch();
+                      $owner = $owner.': '.$model.' '.$group['name'];
+                      $gun['owner'] = $owner;
+                      break;
+                    }
+                    else
+                    {
+                      $gun['owner'] = "INNY ".$owner;
+                      break;
+                    }
+                  }
+                }
+              </php>
+              <td class="short">{$gun['UID']}</td>
+              <td class="short">{$gun['name']}</td>
+              <td class="short">{$gun['typename']}</td>
+              <td class="short">{$gun['value2']}</td>
+              <td class="short">{$gun['ownertypename']}</td>
+              <td class="short">{$gun['owner']}</td>
+            </tr>
+          </foreach>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

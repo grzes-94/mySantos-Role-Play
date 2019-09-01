@@ -1,0 +1,87 @@
+<li <if test="$this->request['section'] == 'home' || !$this->request['section']">class="active"</if>>
+	<a href="{parse url="module=admin&section=home" base="publicWithApp"}">
+		Home
+	</a>
+</li>
+<li <if test="$this->request['section'] == 'cash'">class="active"</if>>
+	<a href="{parse url="module=admin&section=cash" base="publicWithApp"}">
+		Gotówka
+	</a>
+</li>
+<li <if test="$this->request['section'] == 'chars'">class="active"</if> >
+	<a href="{parse url="module=admin&section=chars" base="publicWithApp"}">
+		Postacie
+	</a>
+</li>
+<li <if test="$this->request['section'] == 'penalty'">class="active"</if> >
+	<a href="{parse url="module=admin&section=penalty" base="publicWithApp"}">
+		Kary
+	</a>
+</li>
+<li <if test="$this->request['section'] == 'bans'">class="active"</if> >
+	<a href="{parse url="module=admin&section=bans" base="publicWithApp"}">
+		Bany
+	</a>
+</li>
+<li <if test="$this->request['section'] == 'groups'">class="active"</if> >
+	<a href="{parse url="module=admin&section=groups" base="publicWithApp"}">
+		Grupy
+	</a>
+</li>
+<li <if test="$this->request['section'] == 'doors' || $this->request['section'] == 'houses' || $this->request['section'] == 'sellhouses'">class="active"</if> >
+	<a href="{parse url="module=admin&section=doors" base="publicWithApp"}">
+		Drzwi
+	</a>
+</li>
+<li <if test="$this->request['section'] == 'cashlogs'">class="active"</if> >
+	<a href="{parse url="module=admin&section=cashlogs" base="publicWithApp"}">
+		Logi gotówki
+	</a>
+</li>
+<li <if test="$this->request['section'] == 'vehlogs'">class="active"</if> >
+	<a href="{parse url="module=admin&section=vehlogs" base="publicWithApp"}">
+		Logi pojazdów
+	</a>
+</li>
+<li <if test="$this->request['section'] == 'itemlogs'">class="active"</if> >
+	<a href="{parse url="module=admin&section=itemlogs" base="publicWithApp"}">
+		Logi itemów
+	</a>
+</li>
+<li <if test="$this->request['section'] == 'vehicles'">class="active"</if> >
+	<a href="{parse url="module=admin&section=vehicles" base="publicWithApp"}">
+		Pojazdy
+	</a>
+</li>
+<li <if test="$this->request['section'] == 'salon'">class="active"</if> >
+	<a href="{parse url="module=admin&section=salon" base="publicWithApp"}">
+		Salon
+	</a>
+</li>
+<li <if test="$this->request['section'] == 'admins'">class="active"</if> >
+	<a href="{parse url="module=admin&section=admins" base="publicWithApp"}">
+		Administratorzy
+	</a>
+</li>
+<li <if test="$this->request['section'] == 'guns'">class="active"</if> >
+	<a href="{parse url="module=admin&section=guns" base="publicWithApp"}">
+		Broń
+	</a>
+</li>
+<li <if test="$this->request['section'] == 'jaillogs'">class="active"</if> >
+	<a href="{parse url="module=admin&section=jaillogs" base="publicWithApp"}">
+		Przetrzymania
+	</a>
+</li>
+<li <if test="$this->request['section'] == 'faliedlogins'">class="active"</if> >
+	<a href="{parse url="module=admin&section=faliedlogins" base="publicWithApp"}">
+		Błędy logowań
+	</a>
+</li>
+<if test="$this->memberData['panel_perm'] & 1">
+	<li <if test="$this->request['section'] == 'premka'">class="active"</if> >
+		<a href="{parse url="module=admin&section=premka" base="publicWithApp"}">
+			Premium
+		</a>
+	</li>
+</if>

@@ -1,0 +1,109 @@
+<ips:template parameters="$pagination, $chars" />
+{parse striping="fetchRows" classes="row2,row1"}
+<php>
+$SQL = $this->DB->query('SELECT * FROM `srv_characters` WHERE `block` = 0');
+$licznik = $this->DB->getTotalRows( $SQL );
+$SQL1 = $this->DB->query('SELECT * FROM `srv_characters` WHERE `block` = 512 OR `block` = 1 OR `block` = 2');
+$licznik1 = $this->DB->getTotalRows( $SQL1 );
+$SQL2 = $this->DB->query('SELECT * FROM `srv_characters`');
+$licznik2 = $this->DB->getTotalRows( $SQL2 );
+</php>
+<script type="text/javascript">
+function EditChar( e, awardID )
+{
+  var _url = 'index.php?app=msrp&module=admin&section=editchar&uid=' + awardID;
+  new ipb.Popup( 'rep' + awardID, {type: 'pane', modal: true, w: '700px', h: '500px', ajaxURL: _url, hideAtStart: false, close: '.cancel' } );
+};
+
+function DeactivateChar( e, awardID )
+{
+  var _url = 'index.php?app=msrp&module=admin&section=deactivate&uid=' + awardID;
+  new ipb.Popup( 'rep' + awardID, {type: 'pane', modal: true, w: '700px', h: '500px', ajaxURL: _url, hideAtStart: false, close: '.cancel' } );
+};
+
+function ActiveChar( e, awardID )
+{
+  var _url = 'index.php?app=msrp&module=admin&section=active&uid=' + awardID;
+  new ipb.Popup( 'rep' + awardID, {type: 'pane', modal: true, w: '700px', h: '500px', ajaxURL: _url, hideAtStart: false, close: '.cancel' } );
+};
+
+function SearchChar( e, awardID )
+{
+  var _url = 'index.php?app=msrp&module=admin&section=search&uid=' + awardID;
+  new ipb.Popup( 'rep' + awardID, {type: 'pane', modal: true, w: '700px', h: '500px', ajaxURL: _url, hideAtStart: false, close: '.cancel' } );
+};
+</script><div class="maintitle ipsFilterbar clear clearfix">
+<ul class="ipsList_inline left">
+{parse template="adminTabs" group="msrp"}
+</ul>
+</div>
+<div class="ipsVerticalTabbed_content ipsLayout_content ipsBox_container">
+<div class="ipsPad">
+<div class="ipsVerticalTabbed_content ipsLayout_content gamehubMainContent">
+<div style="width: 27%; height: auto; float: right; text-align: center;">
+<div class="ipsVerticalTabbed_content ipsLayout_content ipsBox_container" style="width: 267px; min-height: 120px;">
+<h3 class="maintitle">Statystyki</h3>
+<table width="100%;" class="ipb_table">
+<tbody>
+<tr>
+<td width="40%" style="padding-left: 15%"><b>Wszystkich</b></td>
+<td style="padding-left: 15%">{$licznik2}</td>
+</tr>
+<tr>
+<td width="40%" style="padding-left: 15%"><b>Dostępnych</b></td>
+<td style="padding-left: 15%">{$licznik}</td>
+</tr>
+<tr>
+<td width="40%" style="padding-left: 15%"><b>Zablokowanych</b></td>
+<td style="padding-left: 15%">{$licznik1}</td>
+</tr>
+</tbody>
+</table>
+<br />
+<a href="index.php?&app=msrp&module=admin&section=searchchar" class="input_submit" style="padding: 5px;">Wyszukaj postać</a>
+<br />
+</div>
+</div>
+<div style="width: 72%;">
+<h3 class="maintitle">Lista postaci</h3>
+<table class="ipb_table report_center">
+<tbody>
+<if test="count($chars)">
+<foreach loop="$chars as $row">
+<php>
+$user = IPSMember::load( $row['global_id'] );
+</php>
+<tr class="{parse striping="fetchRows"}">
+                  <td class="short" style="<if test="$row['block'] & 512 || $row['block'] & 1 || $row['block'] & 2">background: #F9A7A7;</if>">
+                    {$row['player_uid']}
+                  </td>
+                  <td class="short" style="<if test="$row['block'] & 512 || $row['block'] & 1 || $row['block'] & 2">background: #F9A7A7;</if>">
+                    <a href="index.php?&app=msrp&module=character&section=showchar&uid={$row['player_uid']}">{$row['nickname']}</a>
+                    <br />
+                    <small>
+                    <a href="index.php?showuser={$row['global_id']}">{IPSMember::makeNameFormatted( $user['members_display_name'],$user['member_group_id'] )}</a>
+                    </small>
+                  </td>
+                  <td class="short" style="<if test="$row['block'] & 512 || $row['block'] & 1 || $row['block'] & 2">background: #F9A7A7;</if>"><font color="green"><b>$</b></font>{$row['cash']}
+                  </td>
+                  <td class="short" style="<if test="$row['block'] & 512 || $row['block'] & 1 || $row['block'] & 2">background: #F9A7A7;</if>"><font color="#b4453b"><b>$</b></font>{$row['credit']}
+                  </td>
+                  <td class="short" style="<if test="$row['block'] & 512 || $row['block'] & 1 || $row['block'] & 2">background: #F9A7A7;</if>">{$row['hours']} h, {$row['minutes']}min
+                  </td>
+                  <td class="short" style="<if test="$row['block'] & 512 || $row['block'] & 1 || $row['block'] & 2">background: #F9A7A7;</if>">
+                    <if test="$row['block'] & 1"><a href="#" class="ipsButton_secondary" onclick="ActiveChar( this, {$row['player_uid']} );"><img src="/public/style_images/master/accept.png" data-tooltip="Aktywuj postać"></a><else /><a href="#" class="ipsButton_secondary" onclick="DeactivateChar( this, {$row['player_uid']} );"><img src="/public/style_images/master/cross.png" data-tooltip="Dezaktywuj postać"></a></if>
+                    <if test="$row['logged'] == 0"><a href="index.php?&app=msrp&module=admin&section=editchar&uid={$row['player_uid']}" class="ipsButton_secondary"><img src="/public/style_images/master/display_name.png" data-tooltip="Edytuj postać"></a></if>
+                    <a href="#" class="ipsButton_secondary" onclick="SearchChar( this, {$row['global_id']} );"><img src="/public/style_images/master/page_topic_magnify.png" data-tooltip="Znajdź wszystkie postacie użytkownika"></a>
+                  </td>
+                  </tr>
+                </foreach>
+                <else />
+                <tr><td colspan="3">Nie znaleziono żadnej postaci.</td></tr>
+              </if>
+            </tbody>
+          </table>
+          <div style="float:right;">{$pagination}</div>
+        </div>
+      </div>
+    </div>
+  </div>

@@ -1,0 +1,10 @@
+<li <if test="$this->request['section'] == 'dashboard' || !$this->request['section']">class="active"</if>>
+	<a href="{parse url="module=gov&section=dashboard" base="publicWithApp"}">
+		Strona główna
+	</a>
+</li>
+<li <if test="$this->request['section'] == 'list'">class="active"</if>>
+	<a href="{parse url="module=gov&section=dashboard&section=list" base="publicWithApp"}">
+		Lista biznesów
+	</a>
+</li>

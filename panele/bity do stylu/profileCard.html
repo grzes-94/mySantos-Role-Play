@@ -1,0 +1,94 @@
+<ips:template parameters="$characters,$logs,$member,$premium" />
+{parse striping="row" classes="row1,row2"}
+<style tyle="text/css">.hook{line-height:15px!important;text-align:center;height:auto;width:auto;min-width:100px;padding:5px;margin-bottom:10px!important;background-color:#3E4F73!important;}.hook.inactive{opacity:0.3;}.hook.inactive:hover{opacity:0.7;background-color:#3E4F73!important;}.hook span{font-size:0.95em;}</style>
+<if test="count($characters)">
+<div class="general_box clearfix"><h3>Postacie</h3></div>
+<ul class="ipsList_inline">
+<foreach loop="$characters as $row">
+<li class="ipsButton_secondary hook" style="<if test="$row['block'] & 1 || $row['block'] & 2 || $row['block'] & 4">opacity: 0.6;<else /></if>">
+					<if test="$row['hide'] & 1"><img src="/public/skins/hide.png" style="height: 100px;"><else /><img src="public/skins/Skin_{$row['skin']}.png" style="height: 100px;"></if>
+
+					<br />
+
+					<span class="hnick">
+						<if test="$row['hide'] & 1 && $row['global_id'] !=$this->memberData['member_id']">Postać ukryta<else />{$row['nickname']}</if>
+					</span>
+
+					<br />
+
+					<span>
+						{$row['hours']}h, {$row['minutes']}min
+					</span><br />
+					<if test="$row['logged']">
+					<span class="ipsBadge ipsBadge_green">ONLINE</span>
+				</if>
+					<span>
+						<if test="$this->memberData['member_group_id'] == 4 || $this->memberData['member_group_id'] == 8 || $this->memberData['member_group_id'] == 7">
+							<br />
+							<a href="index.php?app=msrp&module=character&section=showchar&uid={$row['player_uid']}" style="color:red;">Zbadaj postać</a></if>
+					</span>
+				</a>
+			</li>
+		</foreach>
+	</ul>
+	<else />
+	<div class="general_box clearfix"><h3>Postacie</h3></div>
+	<div class="message">
+		<if test="$member['member_id'] == $this->memberData['member_id']">
+			Nie posiadasz postaci. Załóż nową postać <a href="index.php?app=msrp&module=character&section=createchar">tutaj</a>.
+			<else />
+			Gracz nie posiada postaci.
+		</div><br />
+	</if>
+</if>
+</div>
+<if test="$premium && $member['member_id'] != $this->memberData['member_id'] && $this->memberData['member_group_id']!=4 && $this->memberData['member_group_id']!=7 && $this->memberData['member_group_id']!=8 && $this->memberData['member_group_id']!=11">
+	<div class="general_box clearfix"><h3>Logi kar</h3></div>
+	<div class="message">Gracz posiada Konto Premium. Nie możesz wyswietlać jego kar.</div>
+<else />
+	<if test="count($logs)">
+		<table class="ipb_table report_center">
+			<div class="general_box clearfix"><h3>Logi kar</h3></div>
+			<tbody>
+				<tr class="header">
+					<th scope="col">Nadano</th>
+					<th scope="col">Postać</th>
+					<th scope="col">Typ kary</th>
+					<th scope="col">Powód</th>
+				</tr>
+				<foreach loop="$logs as $row">
+					<php>
+						$this->DB->query('SELECT nickname, hide, global_id FROM srv_characters WHERE player_uid = '. $row['player_uid'] .'');
+						while($char = $this->DB->fetch())
+						{
+							if($char['hide'] && !($this->memberData['member_group_id'] == 4 || $this->memberData['member_group_id'] == 8 || $this->memberData['member_group_id'] == 7 || $this->memberData['member_id'] == $char['global_id']))
+								$row['nickname']="<i>Postać ukryta</i>";
+							else
+								$row['nickname'] = str_replace('_', ' ', $char['nickname']);
+						}
+						if($row['admin_gid'] != -1)
+						$member = IPSMember::load( $row['admin_gid'] );
+						else $member="System";
+					</php>
+
+					<tr class="{parse striping="row"}">
+						<td>{parse date="$row['time']" format="short"}<br> przez:
+							<if test="$row['admin_gid'] != -1">
+								<a href="index.php?showuser={$member['member_id']}">{IPSMember::makeNameFormatted( $member['members_display_name'],$member['member_group_id'] )}</a>
+								<else />
+								System
+							</if>
+						</td>
+						<td>{$row['nickname']}
+						</td>
+						<td>{$row['type']}</td>
+						<td>{$row['reason']}</td>
+					</tr>
+				</foreach>
+			</tbody>
+		</table>
+		<else />
+		<div class="general_box clearfix"><h3>Logi</h3></div>
+		<div class="message">Gracz nie posiada żadnych wpisów w logach</div>
+	</if>
+</if>

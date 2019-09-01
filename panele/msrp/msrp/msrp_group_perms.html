@@ -1,0 +1,85 @@
+<ips:template parameters=" $members,$permissions,$groupid" />
+{parse striping="fetchRows" classes="row1,row2"}
+<script type="text/javascript">
+function DeleteMember(e, memberid, groupid )
+{
+  var _url = 'index.php?app=msrp&module=group&section=deletemember&group=' + groupid + '&memberid=' + memberid;
+  new ipb.Popup( 'rep' + groupid, {type: 'pane', modal: true, w: '700px', h: '500px', ajaxURL: _url, hideAtStart: false, close: '.cancel' } );
+};
+</script>
+<div class="maintitle ipsFilterbar clearfix">
+<ul class="ipsList_inline">
+{parse template="groupTabs" group="msrp"}
+</ul>
+</div>
+<div class="ipsCustomBox" style="width: 100%; float: left">
+<div class="ipsVerticalTabbed_content ipsLayout_content ipsBox_container">
+<div class="ipsPad">
+<fieldset class="row1">
+<form method="post" action>
+<table class="ipb_table report_center">
+<tbody>
+<tr class="header">
+<th scope="col" class="short" style="width: 10%;"> Pracownik</th>
+<th scope="col" class="short" style="width: 3%;"> ID rangi </th>
+<th scope="col" class="short" style="width: 10%;"> Ranga </th>
+<th scope="col" class="short" style="width: 3%;"> Skin </th>
+<th scope="col" class="short" style="width: 12%;"> Wypłata </th>
+<th scope="col" class="short" style="width: 12%;"> Prowizja </th>
+<foreach loop="$permissions as $permission">
+<th scope="col" class="short" style="width: 3%;">
+{$permission}
+</th>
+</foreach>
+<th scope="col" class="short" style="width: 8%;">Usuń</th>
+</tr>
+<if test="count($members)">
+<foreach loop="$members as $row">
+<tr class='{parse striping="fetchRows"}'>
+<td class="short">
+{$row['nickname']}
+</td>
+<td class="short">
+<input type="number" size="3" min="0" max="255" class="input_text" style="width: 50px;" name="rank[{$row['id']}][rank]" value="{$row['rank']}" />
+</td>
+<td class="short">
+<input type="text" class="input_text" name="rank[{$row['id']}][rankname]" value="{$row['rank_name']}" />
+</td>
+<td class="short">
+<input type="number" min="0" max="311" style="width: 50px;" size="4" maxlength="3" class="input_text" name="rank[{$row['id']}][skin]" value="{$row['skin']}">
+</td>
+<td class="short">
+$ <input type="number" min="0" max="1000" style="width: 50px;" size="4" maxlength="3" class="input_text" name="rank[{$row['id']}][salary]" value="{$row['salary']}">
+</td>
+<td class="short">
+<input type="number" min="0" max="90" size="2" maxlength="3" class="input_text" style="width: 50px;" name="rank[{$row['id']}][commission]" value="{$row['commission']}">%
+</td>
+<foreach loop="$permissions as $key => $permission">
+<td class="short">
+<input type="checkbox" name="rank[{$row['id']}][perms][{$key}]" value="1" <if test="$row['permission'] & $key">checked</if> />
+										</td>
+									</foreach>
+									<td>
+											<a href="#" class="ipsButton_secondary" onclick="DeleteMember(this,{$row['player_uid']}, {$groupid} );"><img src="/public/style_images/master/cross.png" data-tooltip="Usuń pracownika"></a>
+									</td>
+
+								</tr>
+							</foreach>
+							<else />
+							<tr>
+								<td colspan="14" class="short">
+									Brak pracowników offline.
+								</td>
+							</tr>
+
+							</if>
+						</tbody>
+					</table>
+					<fieldset class="submit">
+						<input type="submit" class="input_submit" name="updatePerms" value="Zapisz" />
+					</fieldset>
+				</form>
+			</fieldset>
+		</div>
+	</div>
+</div>

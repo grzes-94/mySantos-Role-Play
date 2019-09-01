@@ -1,0 +1,743 @@
+/*----------------------------------------------------------------------------*-
+					=================================
+					Y Sever Includes - Default System
+					=================================
+Description:
+	Sets up a few standard but non-core items if required (common commands etc).
+Legal:
+	Copyright (C) 2007 Alex "Y_Less" Cole
+
+	This program is free software; you can redistribute it and/or
+	modify it under the terms of the GNU General Public License
+	as published by the Free Software Foundation; either version 2
+	of the License, or (at your option) any later version.
+
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with this program; if not, write to the Free Software
+	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+	MA 02110-1301, USA.
+Version:
+	0.1
+Changelog:
+	17/05/07:
+		Added all standard calls.
+		Updated multiple call code to return 1 if any calls are 1.
+	17/04/07:
+		First version.
+Functions:
+	Public:
+		-
+	Core:
+		Default_Setup - Sets up some core systems if required.
+	Stock:
+		-
+	Static:
+		-
+	Inline:
+		-
+	API:
+		-
+Callbacks:
+	-
+Definitions:
+	-
+Enums:
+	-
+Macros:
+	-
+Tags:
+	-
+Variables:
+	Global:
+		-
+	Static:
+		-
+Commands:
+	-
+Compile options:
+	-
+Operators:
+	-
+-*----------------------------------------------------------------------------*/
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Default_Setup
+Params:
+	-
+Return:
+	-
+Notes:
+	Sets up system essential things (such as the processing loops) if they're
+	defined as being used.
+-*----------------------------------------------------------------------------*/
+
+Default_Setup()
+{
+	new
+		ret;
+	#if defined _YSI_VISUAL_OBJECTS
+		ret = Object_Object() ? 1 : ret;
+	#endif
+	#if defined _YSI_VISUAL_CHECKPOINTS
+		ret = Checkpoint_Checkpoint() ? 1 : ret;
+	#endif
+	#if defined _YSI_VISUAL_AREAS
+		ret = Area_Area() ? 1 : ret;
+	#endif
+	#if defined _YSI_SERVER_MODULES
+		ret = Modules_Modules() ? 1 : ret;
+	#endif
+	#if defined _YSI_VISUAL_RACE
+		ret = Race_Race() ? 1 : ret;
+	#endif
+	#if defined _YSI_SYSTEM_GROUPS
+		ret = Group_Group() ? 1 : ret;
+	#endif
+	#if defined _YSI_GAMEMODE_PROPERTIES
+		ret = Property_Property() ? 1 : ret;
+	#endif
+	return ret;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	LoadScript
+Params:
+	-
+Return:
+	-
+Notes:
+	Loads things needed AFTER one of the init functions;
+-*----------------------------------------------------------------------------*/
+
+LoadScript()
+{
+	new ret;
+	#if defined _YSI_CORE_TEXT
+		ret = Text_Text() ? 1 : ret;
+	#endif
+	#if defined _YSI_CORE_LANGUAGES
+		ret = Langs_Langs() ? 1 : ret;
+	#endif
+	#if defined _YSI_CORE_COMMANDS
+		ret = Command_Parse() ? 1 : ret;
+	#endif
+	return ret;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Default_OnGameModeInit
+Params:
+	-
+Return:
+	-
+Notes:
+	Calls standard functions.
+-*----------------------------------------------------------------------------*/
+
+stock Default_OnGameModeInit()
+{
+	return Default_Setup();
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Default_OnGameModeExit
+Params:
+	-
+Return:
+	-
+Notes:
+	Calls standard functions.
+-*----------------------------------------------------------------------------*/
+
+stock Default_OnGameModeExit()
+{
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Default_OnFilterScriptInit
+Params:
+	-
+Return:
+	-
+Notes:
+	Calls standard functions.
+-*----------------------------------------------------------------------------*/
+
+stock Default_OnFilterScriptInit()
+{
+	return Default_Setup();
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Default_OnFilterScriptExit
+Params:
+	-
+Return:
+	-
+Notes:
+	Calls standard functions.
+-*----------------------------------------------------------------------------*/
+
+stock Default_OnFilterScriptExit()
+{
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Default_OnPlayerConnect
+Params:
+	playerid - The player who connected.
+Return:
+	-
+Notes:
+	Calls standard functions.
+-*----------------------------------------------------------------------------*/
+
+stock Default_OnPlayerConnect(playerid)
+{
+	new
+		ret;
+	#if defined _YSI_SYSTEM_GROUPS
+		ret = Group_OnPlayerConnect(playerid) ? 1 : ret;
+	#endif
+	#if defined _YSI_CORE_PLAYER
+		ret = Player_OnPlayerConnect(playerid) ? 1 : ret;
+	#endif
+	#if defined _YSI_VISUAL_CHECKPOINTS
+		ret = Checkpoint_OnPlayerConnect(playerid) ? 1 : ret;
+	#endif
+	return ret;
+	#pragma unused playerid
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Default_OnPlayerDisconnect
+Params:
+	playerid - The player who disconnected.
+	reason - Why they left.
+Return:
+	-
+Notes:
+	Calls standard functions.
+-*----------------------------------------------------------------------------*/
+
+stock Default_OnPlayerDisconnect(playerid, reason)
+{
+	new
+		ret;
+	#if defined _YSI_VISUAL_OBJECTS
+		ret = Object_OnPlayerDisconnect(playerid, reason) ? 1 : ret;
+	#endif
+	#if defined _YSI_VISUAL_RACE
+		ret = Race_OnPlayerDisconnect(playerid, reason) ? 1 : ret;
+	#endif
+	#pragma unused playerid, reason
+	return ret;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Default_OnPlayerSpawn
+Params:
+	playerid - The player who spawned.
+Return:
+	-
+Notes:
+	Calls standard functions.
+-*----------------------------------------------------------------------------*/
+
+stock Default_OnPlayerSpawn(playerid)
+{
+	return 0;
+	#pragma unused playerid
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Default_OnPlayerDeath
+Params:
+	playerid - The player who died.
+	killerid - The player who killed them.
+	reason - How they died.
+Return:
+	-
+Notes:
+	Calls standard functions.
+-*----------------------------------------------------------------------------*/
+
+stock Default_OnPlayerDeath(playerid, killerid, reason)
+{
+	return 0;
+	#pragma unused playerid, killerid, reason
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Default_OnVehicleSpawn
+Params:
+	vehicleid - The vehicle which spawned.
+Return:
+	-
+Notes:
+	Calls standard functions.
+-*----------------------------------------------------------------------------*/
+
+stock Default_OnVehicleSpawn(vehicleid)
+{
+	return 0;
+	#pragma unused vehicleid
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Default_OnVehicleDeath
+Params:
+	vehicleid - The vehicle that was destroyed.
+	killerid - Who destroyed it.
+Return:
+	-
+Notes:
+	Calls standard functions.
+-*----------------------------------------------------------------------------*/
+
+stock Default_OnVehicleDeath(vehicleid, killerid)
+{
+	return 0;
+	#pragma unused vehicleid, killerid
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Default_OnPlayerText
+Params:
+	playerid - The player who typed some text.
+	text[] - The text they entered.
+Return:
+	-
+Notes:
+	Calls standard functions.
+-*----------------------------------------------------------------------------*/
+
+stock Default_OnPlayerText(playerid, text[])
+{
+	return 1;
+	#pragma unused playerid, text
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Default_OnPlayerCommandText
+Params:
+	playerid - The player who typed a command.
+	cmdtext[] - The command they entered.
+Return:
+	-
+Notes:
+	Calls standard functions.
+-*----------------------------------------------------------------------------*/
+
+stock Default_OnPlayerCommandText(playerid, cmdtext[])
+{
+	new
+		ret;
+	#if defined _YSI_CORE_COMMANDS
+		ret = Command_Process(playerid, cmdtext) ? 1 : ret;
+	#endif
+	return ret;
+	#pragma unused playerid, cmdtext
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Default_OnPlayerInfoChange
+Params:
+	playerid - The player who did nothing.
+Return:
+	-
+Notes:
+	Calls standard functions.
+-*----------------------------------------------------------------------------*/
+
+stock Default_OnPlayerInfoChange(playerid)
+{
+	return 0;
+	#pragma unused playerid
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Default_OnPlayerRequestClass
+Params:
+	playerid - The player who requested a class.
+	classid - The class they requested.
+Return:
+	-
+Notes:
+	Calls standard functions.
+-*----------------------------------------------------------------------------*/
+
+stock Default_OnPlayerRequestClass(playerid, classid)
+{
+	return 0;
+	#pragma unused playerid, classid
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Default_OnPlayerEnterVehicle
+Params:
+	playerid - The player who got in.
+	vehicleid - The vehicle they got in.
+	ispassenger - Where they got in.
+Return:
+	-
+Notes:
+	Calls standard functions.
+-*----------------------------------------------------------------------------*/
+
+stock Default_OnPlayerEnterVehicle(playerid, vehicleid, ispassenger)
+{
+	return 0;
+	#pragma unused playerid, vehicleid, ispassenger
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Default_OnPlayerExitVehicle
+Params:
+	playerid - The player who left.
+	vehicleid - The vehicle they left.
+Return:
+	-
+Notes:
+	Calls standard functions.
+-*----------------------------------------------------------------------------*/
+
+stock Default_OnPlayerExitVehicle(playerid, vehicleid)
+{
+	return 0;
+	#pragma unused playerid, vehicleid
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Default_OnPlayerStateChange
+Params:
+	playerid - The player who changed state.
+	newstate - Their new state.
+	oldstate - Their last state.
+Return:
+	-
+Notes:
+	Calls standard functions.
+-*----------------------------------------------------------------------------*/
+
+stock Default_OnPlayerStateChange(playerid, newstate, oldstate)
+{
+	#if defined _YSI_VISUAL_RACE
+		return Race_OnPlayerStateChange(playerid, newstate, oldstate);
+	#else
+		return 0;
+		#pragma unused playerid, newstate, oldstate
+	#endif
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Default_OnPlayerEnterCheckpoint
+Params:
+	playerid - The player who entered a checkpoint.
+Return:
+	-
+Notes:
+	Calls standard functions.
+-*----------------------------------------------------------------------------*/
+
+stock Default_OnPlayerEnterCheckpoint(playerid)
+{
+	#if defined _YSI_VISUAL_CHECKPOINTS
+		return Checkpoint_OnPlayerEnterCheckpoint(playerid);
+	#else
+		return 0;
+		#pragma unused playerid
+	#endif
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Default_OnPlayerLeaveCheckpoint
+Params:
+	playerid - The player who left a checkpoint.
+Return:
+	-
+Notes:
+	Calls standard functions.
+-*----------------------------------------------------------------------------*/
+
+stock Default_OnPlayerLeaveCheckpoint(playerid)
+{
+	#if defined _YSI_VISUAL_CHECKPOINTS
+		return Checkpoint_OnPlayerLeaveCheckpoint(playerid);
+	#else
+		return 0;
+		#pragma unused playerid
+	#endif
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Default_OnPlayerEnterRaceCheckpoint
+Params:
+	playerid - The player who entered a checkpoint.
+Return:
+	-
+Notes:
+	Calls standard functions.
+-*----------------------------------------------------------------------------*/
+
+#define Default_OnPlayerEnterRaceCheckpoint(%1) \
+	Default_OnPlayerEnterRaceCP(%1)
+
+stock Default_OnPlayerEnterRaceCP(playerid)
+{
+	#if defined _YSI_VISUAL_RACE
+		return Race_OnPlayerEnterRaceCheckpoint(playerid);
+	#else
+		return 0;
+		#pragma unused playerid
+	#endif
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Default_OnPlayerLeaveRaceCheckpoint
+Params:
+	playerid - The player who left a checkpoint.
+Return:
+	-
+Notes:
+	Calls standard functions.
+-*----------------------------------------------------------------------------*/
+
+#define Default_OnPlayerLeaveRaceCheckpoint(%1) \
+	Default_OnPlayerLeaveRaceCP(%1)
+
+stock Default_OnPlayerLeaveRaceCP(playerid)
+{
+	return 0;
+	#pragma unused playerid
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Default_OnRconCommand
+Params:
+	cmd[] - The RCON command sent.
+Return:
+	-
+Notes:
+	Calls standard functions.
+-*----------------------------------------------------------------------------*/
+
+stock Default_OnRconCommand(cmd[])
+{
+	return 0;
+	#pragma unused cmd
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Default_OnPlayerPrivmsg
+Params:
+	playerid - Player who sent the message.
+	recieverid - Player who recieved the message.
+	text[] - The message.
+Return:
+	-
+Notes:
+	Calls standard functions.
+-*----------------------------------------------------------------------------*/
+
+stock Default_OnPlayerPrivmsg(playerid, recieverid, text[])
+{
+	return 1;
+	#pragma unused playerid, recieverid, text
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Default_OnPlayerRequestSpawn
+Params:
+	playerid - Player who requested the spawn.
+Return:
+	-
+Notes:
+	Calls standard functions.
+-*----------------------------------------------------------------------------*/
+
+stock Default_OnPlayerRequestSpawn(playerid)
+{
+	return 0;
+	#pragma unused playerid
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Default_OnObjectMoved
+Params:
+	objectid - Object which finished moving.
+Return:
+	-
+Notes:
+	Calls standard functions.
+-*----------------------------------------------------------------------------*/
+
+stock Default_OnObjectMoved(objectid)
+{
+	return 0;
+	#pragma unused objectid
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Default_OnPlayerObjectMoved
+Params:
+	playerid - Player who's object moved.
+	objectid - Object which finished moving.
+Return:
+	-
+Notes:
+	Calls standard functions.
+-*----------------------------------------------------------------------------*/
+
+stock Default_OnPlayerObjectMoved(playerid, objectid)
+{
+	return 0;
+	#pragma unused playerid, objectid
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Default_OnPlayerPickUpPickup
+Params:
+	playerid - Player who picked up a pickup.
+	pickupid - Pickup picked up.
+Return:
+	-
+Notes:
+	Calls standard functions.
+-*----------------------------------------------------------------------------*/
+
+stock Default_OnPlayerPickUpPickup(playerid, pickupid)
+{
+	return 0;
+	#pragma unused playerid, pickupid
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Default_OnVehicleMod
+Params:
+	vehicleid - Vehicle modded.
+	componentid - Mod added.
+Return:
+	-
+Notes:
+	Calls standard functions.
+-*----------------------------------------------------------------------------*/
+
+stock Default_OnVehicleMod(vehicleid, componentid)
+{
+	return 0;
+	#pragma unused vehicleid, componentid
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Default_OnVehiclePaintjob
+Params:
+	vehicleid - Vehicle modded.
+	paintjobid - Paintjob applied.
+Return:
+	-
+Notes:
+	Calls standard functions.
+-*----------------------------------------------------------------------------*/
+
+stock Default_OnVehiclePaintjob(vehicleid, paintjobid)
+{
+	return 0;
+	#pragma unused vehicleid, paintjobid
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Default_OnVehicleRespray
+Params:
+	vehicleid - Vehicle modded.
+	color1 - Primary color.
+	color2 - Secondary color.
+Return:
+	-
+Notes:
+	Calls standard functions.
+-*----------------------------------------------------------------------------*/
+
+stock Default_OnVehicleRespray(vehicleid, color1, color2)
+{
+	return 0;
+	#pragma unused vehicleid, color1, color2
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Default_OnPlayerSelectedMenuRow
+Params:
+	playerid - Player who selected something.
+	row - Thing selected.
+Return:
+	-
+Notes:
+	Calls standard functions.
+-*----------------------------------------------------------------------------*/
+
+stock Default_OnPlayerSelectedMenuRow(playerid, row)
+{
+	#if defined _YSI_GAMEMODE_PROPERTIES
+		return Property_OnPlayerSelectedRow(playerid, row);
+	#else
+		return 0;
+		#pragma unused playerid, row
+	#endif
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Default_OnPlayerExitedMenu
+Params:
+	playerid - Player who exited a menu.
+Return:
+	-
+Notes:
+	Calls standard functions.
+-*----------------------------------------------------------------------------*/
+
+stock Default_OnPlayerExitedMenu(playerid)
+{
+	return 0;
+	#pragma unused playerid
+}

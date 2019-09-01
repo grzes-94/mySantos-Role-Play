@@ -1,0 +1,63 @@
+<ips:template parameters="$doors" />
+{parse striping="fetchDoors" classes="row2,row1"}
+<div class="maintitle ipsFilterbar clearfix">
+  <ul class="ipsList_inline">
+    {parse template="groupTabs" group="msrp"}
+  </ul>
+</div>
+<div class="ipsCustomBox" style="width: 100%; float: left">
+  <div class="ipsVerticalTabbed_content ipsLayout_content ipsBox_container">
+    <div class="ipsPad">
+      <fieldset class="row1">
+        <br />
+        <form method="post" action>
+          <table class="ipb_table report_center">
+            <tbody>
+              <tr class="header">
+                <th scope="col" class="short"> &nbsp; </th>
+                <th scope="col" class="short"> UID </th>
+                <th scope="col" class="short"> Nazwa drzwi </th>
+                <th scope="col" class="short"> Stan </th>
+                <th scope="col" class="short"> Przejazd </th>
+              </tr>
+              <if test="count( $doors )">
+                <foreach loop="$doors as $row">
+                  <tr class='{parse striping="fetchDoors"}'>
+                    <td class="short">
+                      <img src="http://weedarr.wdfiles.com/local--files/pickups/{$row['pickupid']}.png" width="40" height="40" alt="Pickup" />
+                    </td>
+                    <td class="short">
+                      {$row['UID']}
+                    </td>
+                    <td class="short">
+                      {$row['name']}
+                    </td>
+                    <td class="short">
+                      <if test="$row['lock']">
+                        <span style="color:red">Zamknięte</span>
+                        <else />
+                        <span style="color:green">Otwarte</span>
+                      </if>
+                    </td>
+                    <td class="short">
+                      <if test="$row['garage']">
+                        Tak
+                        <else />Nie
+                        </if>
+                    </td>
+                  </tr>
+                </foreach>
+                <else />
+                <tr>
+                  <td colspan='6'>
+                    Nie znaleziono żadnych drzwi w grupie.
+                  </td>
+                </tr>
+              </if>
+            </tbody>
+          </table>
+        </form>
+      </fieldset>
+    </div>
+  </div>
+</div>

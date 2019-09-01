@@ -1,0 +1,31 @@
+<ips:template parameters="$pagination,$logs" />
+{parse striping="fetchRows" classes="row2,row1"}
+{parse template="characterTabs" group="msrp"}
+<div class="ipsVerticalTabbed_content ipsLayout_content ipsBox_container">
+<div class="ipsPad">
+<h2 class="ipsType_subtitle ipsSettings_pagetitle">Logi logowań z ostatnich 30 dni</h2>
+<table width="100%;" class="ipb_table">
+<tbody>
+<tr class="header">
+<td style="font-weight: bold;"> Postać </td>
+<td style="font-weight: bold;"> Adres IP </td>
+<td style="font-weight: bold;"> Data </td>
+</tr>
+<if test="count($logs)">
+<foreach loop="$logs as $row">
+<tr class="{parse striping="fetchRows"}">
+									<td> {$row['nickname']} </td>
+									<td> {$row['ip']} </td>
+									<td> {parse date="$row['time']" format="long"} </td>
+
+								</tr>
+							</foreach>
+						<else />
+							<tr><td colspan='2'> Nie zaleziono żadnych logów logowań z postaci. </td></tr>
+						</if>
+					</tbody>
+				</table>
+				<div>{$pagination}</div>
+			</div>
+		</div>
+	</div>

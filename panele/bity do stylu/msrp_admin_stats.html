@@ -1,0 +1,93 @@
+<ips:template parameters="$stats" />
+{parse striping="fetchLogs" classes="row2,row1"}
+<div class="maintitle ipsFilterbar clear clearfix">
+  <ul class="ipsList_inline left">
+    {parse template="adminTabs" group="msrp"}
+  </ul>
+</div>
+<div class="ipsVerticalTabbed_content ipsLayout_content ipsBox_container">
+  <div class="ipsPad">
+    <div class="ipsVerticalTabbed_content ipsLayout_content">
+      <h4 class="maintitle">Statystyki</h4>
+      <table class="ipb_table report_center">
+        <tbody>
+          <tr class="header">
+            <td scope="col">Typ</td>
+            <td scope="col">Ilość</td>
+            <td scope="col">Max id</td>
+          </tr>
+          <tr class="{parse striping="fetchLogs"}">
+            <td >Postacie</td>
+            <td>{$stats['characters']}</td>
+            <td></td>
+          </tr>
+          <tr class="{parse striping="fetchLogs"}">
+            <td style="width:40%">Grupy</td>
+            <td>{$stats['groups']}</td>
+            <td>{$stats['maxgroup']}</td>
+          </tr>
+          <tr class="{parse striping="fetchLogs"}">
+            <td >Obiekty</td>
+            <td>{$stats['objects']}</td>
+            <td>{$stats['maxobject']}</td>
+          </tr>
+          <tr class="{parse striping="fetchLogs"}">
+            <td >Przedmioty</td>
+            <td>{$stats['items']}</td>
+            <td>{$stats['maxitem']}</td>
+          </tr>
+          <tr class="{parse striping="fetchLogs"}">
+            <td >Pojazdy</td>
+            <td>{$stats['vehicles']}</td>
+            <td>{$stats['maxvehicle']}</td>
+          </tr>
+          <tr class="{parse striping="fetchLogs"}">
+            <td >Drzwi</td>
+            <td>{$stats['doors']}</td>
+            <td>{$stats['maxdoor']}</td>
+          </tr>
+          <tr class="{parse striping="fetchLogs"}">
+            <td >Rośliny</td>
+            <td>{$stats['plants']}</td>
+            <td>{$stats['maxplant']}</td>
+          </tr>
+          <tr class="{parse striping="fetchLogs"}">
+            <td >Zwłoki</td>
+            <td>{$stats['corpse']}</td>
+            <td>{$stats['maxcorpse']}</td>
+          </tr>
+          <tr class="{parse striping="fetchLogs"}">
+            <td >Cornery</td>
+            <td>{$stats['corners']}</td>
+            <td>{$stats['maxcorner']}</td>
+          </tr>
+          <tr class="{parse striping="fetchLogs"}">
+            <td >Opisy</td>
+            <td>{$stats['descriptions']}</td>
+            <td>{$stats['maxdescription']}</td>
+          </tr>
+          <tr class="{parse striping="fetchLogs"}">
+            <td >Przystanki</td>
+            <td>{$stats['bus']}</td>
+            <td>{$stats['maxbus']}</td>
+          </tr>
+          <tr class="{parse striping="fetchLogs"}">
+            <td >3D Texty</td>
+            <td>{$stats['3dtext']}</td>
+            <td>{$stats['max3dtext']}</td>
+          </tr>
+          <tr class="{parse striping="fetchLogs"}">
+            <td >Skrytki</td>
+            <td>{$stats['safekeeps']}</td>
+            <td>{$stats['maxsafekeep']}</td>
+          </tr>
+          <tr class="{parse striping="fetchLogs"}">
+            <td >Stacje paliw</td>
+            <td>{$stats['fuel_stations']}</td>
+            <td>{$stats['maxfuel']}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

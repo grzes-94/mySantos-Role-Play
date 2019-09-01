@@ -1,0 +1,81 @@
+<ips:template parameters="$admins,$logs" />
+<ips:template parameters="$admins, $logs" />
+{parse striping="fetchRows" classes="row1,row2"}
+<div class="maintitle ipsFilterbar clear clearfix">
+<ul class="ipsList_inline left">
+{parse template="adminTabs" group="msrp"}
+</ul>
+</div>
+<div class="ipsVerticalTabbed_content ipsLayout_content ipsBox_container">
+<div class="ipsPad">
+<div class="ipsVerticalTabbed_content ipsLayout_content gamehubMainContent">
+<table class="ipb_table report_center">
+<tbody>
+<tr class="header">
+<td scope="col" class="short">&nbsp;</td>
+<td scope="col" class="short">OOC</td>
+<td scope="col" class="short">Nick IG</td>
+<td scope="col" class="short">Ranga IG</td>
+<td scope="col" class="short">Czas online</td>
+<td scope="col" class="short">Dziś online</td>
+<td scope="col" class="short">Ostatnio online</td>
+<td scope="col" class="short">Online IC</td>
+</tr>
+<foreach loop="$admins as $admin">
+<tr class="{parse striping="fetchRows"}">
+            <td class="short">
+              <a hovercard-ref='member' hovercard-id='{$admin['global_id']}' class='url fn  _hovertrigger' href='{parse url="showuser={$admin['global_id']}" template="showuser" seotitle="{$adminn['members_display_name']}" base="public"}' title='{$this->lang->words['view_profile']}'>
+                {IPSMember::buildProfilePhoto($admin['global_id'], $size=mini)}
+            </td>
+            <td class="short">
+              <a href="index.php?showuser={$admin['global_id']}">{IPSMember::makeNameFormatted( $admin['members_display_name'],$admin['member_group_id'] )}</a>
+            </td>
+            <td class="short"><a href="index.php?app=msrp&module=character&section=showchar&uid={$admin['player_uid']}">{$admin['nickname']}</a></td>
+            <td class="short">{$admin['admgroup']}</td>
+            <td class="short">{$admin['hours']} h {$admin['minutes']} min</td>
+            <td class="short">{$admin['onlinetoday']}</td>
+            <td class="short">{parse date="$admin['last_online']" format="long"}</td>
+            <td class="short">{$admin['otherTime']}</td>
+          </tr>
+          </foreach>
+        </tbody>
+      </table>
+      <br />
+      <h3 class="maintitle"> Aktywnośc w ostatnim tygodniu </h3>
+      <table class="ipb_table report_center">
+      <tbody>
+        <tr class="header">
+          <td scope="col" class="short">OOC</td>
+          <td scope="col" class="short">D -1</td>
+          <td scope="col" class="short">D -2</td>
+          <td scope="col" class="short">D -3</td>
+          <td scope="col" class="short">D -4</td>
+          <td scope="col" class="short">D -5</td>
+          <td scope="col" class="short">D -6</td>
+          <td scope="col" class="short">D -7</td>
+        </tr>
+        <foreach loop="$logs as $row">
+          <tr  class="{parse striping="fetchRows"}">
+            <td class="short">
+              <php>
+              $admin = IPSMember::load( $row['global_id'] );
+            </php>
+              <a href="index.php?showuser={$row['global_id']}">{IPSMember::makeNameFormatted( $admin['members_display_name'],$admin['member_group_id'] )}</a>
+            </td>
+          <td class="short">{$row['d1']}</td>
+          <td class="short">{$row['d2']}</td>
+          <td class="short">{$row['d3']}</td>
+          <td class="short">{$row['d4']}</td>
+          <td class="short">{$row['d5']}</td>
+          <td class="short">{$row['d6']}</td>
+          <td class="short">{$row['d7']}</td>
+
+
+
+        </tr>
+        </foreach>
+      </tbody>
+    </table>
+    </div>
+  </div>
+</div>

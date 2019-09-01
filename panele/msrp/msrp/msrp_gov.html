@@ -1,0 +1,67 @@
+<ips:template parameters="$settings" />
+{parse striping="fetchRows" classes="row1,row2"}
+<div class="maintitle ipsFilterbar clear clearfix">
+<ul class="ipsList_inline left">
+{parse template="govTabs" group="msrp"}
+</ul>
+</div>
+<center>
+<img src="http://i.imgur.com/ykqC5Kj.png" height="100px;" />
+</center>
+<div class="ipsVerticalTabbed_content ipsLayout_content ipsBox_container">
+<div class="ipsPad">
+<h2 class="ipsType_subtitle ipsSettings_pagetitle">Zarządzanie finansami</h2>
+<form method="post">
+<table class="ipb_table">
+<tbody>
+<tr class="{parse striping="fetchRows"}">
+            <td>Dowód osobisty</td>
+            <td width="60%">
+              <input type="number" value="{$settings['doc_id']}" class="input_text" min="1" max="1000" name="docId" />
+            </td>
+          </tr>
+          <tr class="{parse striping="fetchRows"}">
+            <td>Prawo jazdy</td>
+            <td width="60%">
+              <input type="number" value="{$settings['doc_driver']}" class="input_text" min="100" max="5000" name="docDriver" />
+            </td>
+          </tr>
+          <tr class="{parse striping="fetchRows"}">
+            <td>Licencja pilota</td>
+            <td width="60%">
+              <input type="number" value="{$settings['doc_pilot']}" class="input_text" min="1" max="20000" name="docPilot" />
+            </td>
+          </tr>
+          <tr class="{parse striping="fetchRows"}">
+            <td>Cena paliwa</td>
+            <td width="60%">
+              <input type="number" value="{$settings['fuel_cost']}" class="input_text" min="3" max="1000" name="fuel" />
+            </td>
+          </tr>
+          <tr class="{parse striping="fetchRows"}">
+            <td>Podatek</td>
+            <td width="60%">
+              <input type="number" value="{$settings['taxes']}" class="input_text" min="1" max="100" name="tax" />
+            </td>
+          </tr>
+          <tr class="{parse striping="fetchRows"}">
+            <td>Rejestracja pojazdu</td>
+            <td width="60%">
+              <input type="number" value="{$settings['platecharge']}" class="input_text" min="1" max="2000" name="carRegister" />
+            </td>
+          </tr>
+          <tr class="{parse striping="fetchRows"}">
+            <td>Rejestracja biznesu</td>
+            <td width="60%">
+              <input type="number" value="{$settings['registercharge']}" class="input_text" min="1" max="10000" name="businessRegister" />
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <fieldset class="submit">
+        <input type="submit" value="Zatwierdź" name="confirm" class="input_submit">
+      </fieldset>
+    </form>
+
+  </div>
+</div>

@@ -1,0 +1,60 @@
+<ips:template parameters="$doors, $pagination" />
+{parse striping="fetchDoors" classes="row2,row1"}
+<div class="maintitle ipsFilterbar clear clearfix">
+<ul class="ipsList_inline left">
+{parse template="adminTabs" group="msrp"}
+</ul>
+</div>
+<br />
+<div class="maintitle ipsFilterbar clear clearfix">
+<ul class="ipsList_inline left">
+<li <if test="$this->request['section'] == 'doors'">class="active"</if>>
+      <a href="{parse url="module=admin&section=doors" base="publicWithApp"}">
+        Wszystkie
+      </a>
+    </li>
+    <li <if test="$this->request['section'] == 'houses'">class="active"</if>>
+      <a href="{parse url="module=admin&section=houses" base="publicWithApp"}">
+        Domy
+      </a>
+    </li>
+    <li <if test="$this->request['section'] == 'sellhouses'">class="active"</if>>
+      <a href="{parse url="module=admin&section=sellhouses" base="publicWithApp"}">
+        Domy na sprzedaż
+      </a>
+    </li>
+  </ul>
+</div>
+<div class="ipsVerticalTabbed_content ipsLayout_content ipsBox_container">
+  <div class="ipsPad">
+    <div class="ipsVerticalTabbed_content ipsLayout_content gamehubMainContent">
+      <table class="ipb_table report_center">
+        <tbody>
+          <tr class="header">
+            <td scope="col" class="short">UID</td>
+            <td scope="col" class="short">Nazwa</td>
+            <td scope="col" class="short">Cena</td>
+            <td scope="col" class="short">VW wyjścia</td>
+          </tr>
+          <if test="count($doors)">
+            <foreach loop="$doors as $row">
+              <php>
+
+              </php>
+              <tr class="{parse striping="fetchDoors"}">
+                <td class="short">{$row['UID']}</td>
+                <td class="short">{$row['name']}</td>
+                <td class="short">$ {$row['owner']}</td>
+                <td class="short">{$row['exitvw']}</td>
+
+              </tr>
+            </foreach>
+            <else />
+            <tr colspan="5"><td>Nie znaleziono żadnych drzwi.</td></tr>
+          </if>
+        </tbody>
+      </table>
+      <div class="float:right;">{$pagination}</div>
+    </div>
+  </div>
+  </div>

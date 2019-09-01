@@ -1,0 +1,269 @@
+<ips:template parameters="$groupinfo,$members,$vehicles,$items,$cash,$logs" />
+{parse striping="fetchRows" classes="row1,row2"}
+<div class="maintitle ipsFilterbar clear clearfix">
+<ul class="ipsList_inline left">
+{parse template="govTabs" group="msrp"}
+</ul>
+</div>
+<php>
+if($groupinfo['leader'])
+{
+$leadername = $this->DB->query('SELECT `nickname` FROM `srv_characters` WHERE `player_uid`='.$groupinfo['leader']);
+$leader=$this->DB->fetch($leadername);
+$groupinfo['leadernick'] = str_replace("_", " ", $leader['nickname']);
+}
+</php>
+<div class="ipsVerticalTabbed_content ipsLayout_content ipsBox_container">
+<div class="ipsPad">
+<h3 class="maintitle"> Informacje podstawowe </h3>
+<form method=post>
+<table class="ipb_table">
+<tbody>
+<tr class="{parse striping="fetchRows"}">
+        <td> Identyfikator </td>
+        <td >
+          {$groupinfo['UID']}
+        </td>
+      </tr>
+      <tr class="{parse striping="fetchRows"}">
+        <td> Nazwa </td>
+        <td >{$groupinfo['name']}</td>
+      </tr>
+      <tr class="{parse striping="fetchRows"}">
+        <td > Tag grupy </td>
+        <td >
+            {$groupinfo['tag']}
+        </td>
+      </tr>
+      <tr  class="{parse striping="fetchRows"}">
+        <td > Typ grupy </td>
+        <td >
+          {$groupinfo['type']}
+        </td>
+      </tr>
+      <tr  class="{parse striping="fetchRows"}">
+        <td > Lider </td>
+        <td >
+          <if test="$groupinfo['leader']">
+            <a href="index.php?app=msrp&module=character&section=showchar&uid={$groupinfo['leader']}">{$groupinfo['leadernick']} </a>
+          <else />
+            Brak
+        </if>
+        </td>
+      </tr>
+      <tr class="{parse striping="fetchRows"}">
+        <td > Stan konta </td>
+        <td >
+          <span style="font-weight: bold; color: green;">$</span>
+          {$groupinfo['cash']}
+        </td>
+      </tr>
+      <tr class="{parse striping="fetchRows"}">
+        <td style="width:40%"> Konto pracownicze </td>
+        <td >
+          <span style="font-weight: bold; color: green;">$</span> {$groupinfo['salary_account']}
+
+        </td>
+      </tr>
+      <tr class="{parse striping="fetchRows"}">
+        <td style="width:40%"> Dotacja </td>
+        <td >
+
+            <span style="font-weight: bold; color: green;">$</span>
+              <input type="number" value="{$groupinfo['grant']}" class="input_text" name="grant" min="0" max="2000" />
+              <span class="desc"> Kwota za godzinę pracownika na /duty</span>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  <fieldset class="submit">
+    <input type="submit" value="Zatwierdź" name="confirm" class="input_submit">
+  </fieldset>
+  </form>
+  <br />
+    <h3 class="maintitle"> Członkowie grupy </h3>
+    <div class="ipsBox_container">
+      <table class="ipb_table report_center">
+        <tbody>
+          <tr class="header">
+            <td scope="col" class="short">OOC</td>
+            <td scope="col" class="short">Nick IG</td>
+            <td scope="col" class="short">Ranga</td>
+            <td scope="col" class="short">Wypłata</td>
+            <td scope="col" class="short">Prowizja</td>
+            <td scope="col" class="short">Dziś na służbie</td>
+            <td scope="col" class="short">Status</td>
+            <td scope="col" class="short">Ostatnio online</td>
+          </tr>
+          <if test="count($members)">
+          <foreach loop="$members as $member">
+            <tr class="{parse striping="fetchRows"}">
+              <td class="short">
+                <a href="index.php?showuser={$member['global_id']}">{IPSMember::makeNameFormatted( $member['members_display_name'],$member['member_group_id'] )}</a>
+              </td>
+              <td class="short">
+                <a href="index.php?app=msrp&module=character&section=showchar&uid={$member['player_uid']}">{$member['nickname']}</a>
+              </td>
+              <td class="short"> {$member['rank']}: {$member['rank_name']}</td>
+              <td class="short">$ {$member['salary']}</td>
+              <td class="short"> {$member['commission']}%</td>
+              <td class="short"> {$member['time']}</td>
+              <td class="short"> {$member['status']}</td>
+              <td class="short"> {parse date="$member['last_online']" format="DATE"}</td>
+
+            </tr>
+          </foreach>
+          <else />
+          <tr>
+            <td colspan="6" class="short">
+              Brak pracowników w grupie.
+            </td>
+          </tr>
+          </if>
+        </tbody>
+      </table>
+    </div>
+    <br />
+      <h3 class="maintitle"> Pojazdy </h3>
+      <div class="ipsBox_container">
+        <table class="ipb_table report_center">
+          <tbody>
+          <tr class="header">
+            <td scope="col" class="short" >Pojazd</td>
+            <td scope="col" class="short">UID</td>
+            <td scope="col" class="short">Model</td>
+            <td scope="col" class="short">HP</td>
+            <td scope="col" class="short">Paliwo</td>
+            <td scope="col" class="short">Przebieg</td>
+            <td scope="col" class="short" style="width:8%">Kolor1</td>
+            <td scope="col" class="short" style="width:8%">Kolor2</td>
+          </tr>
+          <if test="count($vehicles)">
+            <foreach loop="$vehicles as $veh">
+              <tr class="{parse striping="fetchRows"}">
+                <td class="short"><img src="public/vehicles/Vehicle_{$veh['model']}.jpg"  height="50px"></td>
+                <td class="short">{$veh['UID']}</td>
+                <td class="short">{$veh['modelname']} ({$veh['model']})</td>
+                <td class="short">{$veh['hp']} HP</td>
+                <td class="short">{$veh['fuel']} l</td>
+                <td class="short">{$veh['distance']} km</td>
+                <td class="short"><div data-tooltip="{$veh['color1']}"><img src="public/colors/{$veh['color1']}.png" alt="" style="height:30px; width:30px;border-radius: 20px; -webkit-border-radius: 20px; -moz-border-radius: 20px;"> </div></td>
+                <td class="short">
+                    <div data-tooltip="{$veh['color2']}"><img src="public/colors/{$veh['color2']}.png" alt="" style="height:30px; width:30px;border-radius: 20px; -webkit-border-radius: 20px; -moz-border-radius: 20px;"></div>
+                </td>
+              </tr>
+            </foreach>
+            <else />
+            <tr>
+              <td colspan="7" class="short">
+                Brak pojazdów w grupie.
+              </td>
+            </tr>
+          </if>
+        </tbody>
+        </table>
+      </div>
+      <br />
+      <h3 class="maintitle"> Przedmioty w magazynie </h3>
+        <div class="ipsBox_container">
+            <table class="ipb_table report_center">
+              <tbody>
+                <tr class="header">
+                <td scope="col" class="short" >UID</td>
+                <td scope="col" class="short">Nazwa</td>
+                <td scope="col" class="short">Typ</td>
+                <td scope="col" class="short">Sztuk</td>
+                <td scope="col" class="short">Wartość 1</td>
+                <td scope="col" class="short">Wartość 2</td>
+              </tr>
+              <if test="count($items)">
+                <foreach loop="$items as $item">
+                <tr class="{parse striping="fetchRows"}">
+                  <td class="short">{$item['UID']}</td>
+                  <td class="short">{$item['name']}</td>
+                  <td class="short">{$item['type']}</td>
+                  <td class="short">{$item['ilosc']}</td>
+                  <td class="short">{$item['value1']}</td>
+                  <td class="short">{$item['value2']}</td>
+                </tr>
+                </foreach>
+                <else />
+                <tr>
+                  <td colspan="6" class="short">
+                    Brak przedmiotów w magazynie.
+                  </td>
+                </tr>
+
+
+              </if>
+
+              </tbody>
+            </table>
+
+        </div>
+
+        <br />
+        <h3 class="maintitle"> Logi konta grupowego </h3>
+        <div class="ipsBox_container">
+            <table class="ipb_table report_center">
+              <tbody>
+                <tr class="header">
+                <td scope="col" class="short" >Od</td>
+                <td scope="col" class="short">Do</td>
+                <td scope="col" class="short">Wartość</td>
+                <td scope="col" class="short">Czas</td>
+              </tr>
+              <if test="count($cash)">
+                <foreach loop="$cash as $row">
+                <tr class="{parse striping="fetchRows"}">
+                  <td class="short">{$row['from']}</td>
+                  <td class="short">{$row['to']}</td>
+                  <td class="short">$ {$row['value']}</td>
+                  <td class="short">{parse date="$row['time']" format="long"}</td>
+
+                </tr>
+                </foreach>
+                <else />
+                <tr>
+                  <td colspan="4" class="short">
+                    Brak logów.
+                  </td>
+                </tr>
+              </if>
+              </tbody>
+            </table>
+        </div>
+        <br />
+        <h3 class="maintitle"> Ostatnie logi pracownicze </h3>
+        <div class="ipsBox_container">
+          <table class="ipb_table report_center">
+            <tbody>
+              <tr class="header">
+              <td scope="col" class="short" >Pracownik</td>
+              <td scope="col" class="short">Typ</td>
+              <td scope="col" class="short">Wartość</td>
+              <td scope="col" class="short" >UID klienta</td>
+              <td scope="col" class="short">Czas</td>
+            </tr>
+            <if test="count($logs)">
+              <foreach loop="$logs as $log">
+              <tr class="{parse striping="fetchRows"}">
+                <td >{$log['nickname']}</td>
+                <td >{$log['type']}</td>
+                <td >{$log['cash']}$</td>
+                <td >{$log['customer_uid']}</td>
+                <td >{parse date="$log['time']" format="short"}</td>
+              </tr>
+              </foreach>
+              <else />
+              <tr>
+                <td colspan="4" class="short">
+                  Brak logów.
+                </td>
+              </tr>
+            </if>
+            </tbody>
+          </table>
+        </div>
+  </div>
+</div>

@@ -1,0 +1,60 @@
+<ips:template parameters="$members, $pagination" />
+{parse striping="fetchRows" classes="row2,row1"}
+<script type="text/javascript">
+function SearchChar( e, awardID )
+                {
+                                var _url = 'index.php?app=msrp&module=admin&section=search&uid=' + awardID;
+                                new ipb.Popup( 'rep' + awardID, {type: 'pane', modal: true, w: '700px', h: '500px', ajaxURL: _url, hideAtStart: false, close: '.cancel' } );
+                };
+</script>
+<php>
+$member = IPSMember::load($row['global_id']);
+</php>
+<div class="maintitle ipsFilterbar clear clearfix">
+<ul class="ipsList_inline left">
+{parse template="adminTabs" group="msrp"}
+</ul>
+</div>
+<div class="ipsVerticalTabbed_content ipsLayout_content ipsBox_container">
+<div class="ipsPad">
+<div class="ipsVerticalTabbed_content ipsLayout_content gamehubMainContent">
+<h3 class="maintitle">Lista wszystkich kont globalnych</h3>
+<table class="ipb_table report_center">
+<tbody>
+<tr class="header">
+<td scope="col" class="short">UID</td>
+<td scope="col" class="short">Użytkownik</td>
+<td scope="col" class="short">Liczba postaci</td>
+<td scope="col" class="short">Liczba kar</td>
+<td scope="col" class="short">Liczba pochwał</td>
+<td scope="col" class="short">Opcje</td>
+</tr>
+<if test="count($members)">
+<foreach loop="$members as $row">
+<php>
+$SQL = $this->DB->query('SELECT * FROM `srv_characters` WHERE `global_id` = '.$row['member_id'].'');
+$licznik = $this->DB->getTotalRows( $SQL );
+$SQL1 = $this->DB->query('SELECT * FROM `srv_penalty` WHERE `player_uid` = '.$row['member_id'].' AND `type` <> 10');
+				$licznik1 = $this->DB->getTotalRows( $SQL1 );
+
+				$SQL2 = $this->DB->query('SELECT * FROM `srv_penalty` WHERE `player_uid` = '.$row['member_id'].' AND `type` = 5');
+				$licznik2 = $this->DB->getTotalRows( $SQL2 );
+				</php>
+				<tr class="{parse striping="fetchRows"}">
+					<td class="short">{$row['member_id']}</td>
+					<td class="short"><a href="index.php?showuser={$row['global_id']}">{IPSMember::makeNameFormatted( $member['members_display_name'],$member['member_group_id'] )}</a></td>
+					<td class="short"><font color="royalBlue">{$licznik}</font></td>
+					<td class="short">{$licznik1}</td>
+					<td class="short">{$licznik2}</td>
+					<td><a href="#" class="ipsButton_secondary" onclick="SearchChar( this, {$row['member_id']} );"><img src="/public/style_images/master/page_topic_magnify.png" data-tooltip="Znajdź wszystkie postacie użytkownika"></a></td>
+				</tr>
+			</foreach>
+		<else />
+			<tr><td colspan="3">Nie znaleziono żadnego konta globalnego.</td></tr>
+		</if>
+	</tbody>
+</table>
+<div class="float:right;">{$pagination}</div>
+		</div>
+	</div>
+</div>

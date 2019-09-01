@@ -1,0 +1,61 @@
+<ips:template parameters="$chars" />
+<div class="maintitle ipsFilterbar clear clearfix">
+<ul class="ipsList_inline left">
+{parse template="adminTabs" group="msrp"}
+</ul>
+</div>
+{parse striping="fetchRows" classes="row2,row1"}
+<div class="ipsVerticalTabbed_content ipsLayout_content ipsBox_container">
+<div class="ipsPad">
+<h2 class="ipsType_subtitle ipsSettings_pagetitle">Wyszukaj postać</h2>
+<form method="post">
+<table class="ipb_table">
+<tbody>
+<tr class="{parse striping="fetchRows"}">
+            <td>Nazwa postaci</td>
+            <td width="60%">
+              <input type="text" class="input_text" name="nick" />
+              <span class="desc">  Użyj _ zamiast spacji</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <fieldset class="submit">
+        <input type="submit" value="Szukaj" name="search" class="input_submit">
+      </fieldset>
+    </form>
+    <br />
+    <h4 class="maintitle">Wyszukane postacie</h4>
+    <div class="ipsBox_container">
+      <table class="ipb_table report_center">
+        <tbody>
+          <tr class="header">
+  					<th scope="col" class="short">Nick</th>
+  					<th scope="col" class="short">OOC</th>
+  					<th scope="col" class="short">Status</th>
+  					<th scope="col" class="short">Ostatnio online</th>
+  				</tr>
+          <if test="count($chars)">
+            <foreach loop="$chars as $row">
+              <tr class="{parse striping="fetchRows"}">
+                <td class="short">{$row['nickname']}</td>
+                <td class="short">{$row['ooc']}</td>
+                <td class="short">{$row['status']}</td>
+                <td class="short">{parse date="$row['last_online']" format="long"}</td>
+                </td>
+              </tr>
+            </foreach>
+            <else />
+            <tr>
+              <td colspan="4">
+                <center>
+                  Nie znaleziono postaci.
+                </center>
+              </td>
+            </tr>
+          </if>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

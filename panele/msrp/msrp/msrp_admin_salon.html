@@ -1,0 +1,55 @@
+<ips:template parameters="$veh" />
+{parse striping="fetchRows" classes="row2,row1"}
+<script type="text/javascript">
+function EditCar( e, awardID )
+                {
+                                var _url = 'index.php?app=msrp&module=admin&section=editcar&uid=' + awardID;
+                                new ipb.Popup( 'rep' + awardID, {type: 'pane', modal: true, w: '700px', h: '500px', ajaxURL: _url, hideAtStart: false, close: '.cancel' } );
+                };
+</script>
+<div class="maintitle ipsFilterbar clear clearfix">
+<ul class="ipsList_inline left">
+{parse template="adminTabs" group="msrp"}
+</ul>
+</div>
+<div class="ipsVerticalTabbed_content ipsLayout_content ipsBox_container">
+<div class="ipsPad">
+<div class="ipsVerticalTabbed_content ipsLayout_content gamehubMainContent">
+<h3 class="maintitle">Lista pojazdow w salonie</h3>
+<table class="ipb_table report_center">
+<tbody>
+<tr class="header">
+<td scope="col" class="short">Model</td>
+<td scope="col" class="short"></td>
+<td scope="col" class="short">Kategoria</td>
+<td scope="col" class="short">Nazwa</td>
+<td scope="col" class="short">Cena</td>
+<if test="$this->memberData['member_group_id'] == 4">
+<td scope="col">Akcja</td>
+</if>
+</tr>
+<if test="count($veh)">
+<foreach loop="$veh as $row">
+<tr class="{parse striping="fetchRows"}">
+					<td class="short">{$row['model']}</td>
+					<td class="short"><img src="/public/vehicles/Vehicle_{$row['model']}.jpg" witth=100 height=75"></td>
+					<td class="short">{$row['category']}</td>
+					<td class="short">{$row['name']}</td>
+					<td class="short">{$row['price']} $</td>
+					<if test="$this->memberData['member_group_id'] == 4">
+					<td class="short"><a href="#" class="ipsButton_secondary" onclick="EditCar( this, {$row['model']} );"><img src="/public/style_images/master/display_name.png" data-tooltip="Edytuj auto"></a></td>
+					</if>
+				</tr>
+			</foreach>
+		<else />
+			<tr><td colspan="3">Nie znaleziono żadnego auta.</td></tr>
+		</if>
+
+
+	</tbody>
+</table>
+
+<div class="float:right;">{$pagination}</div>
+		</div>
+	</div>
+</div>

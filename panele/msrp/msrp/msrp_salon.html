@@ -1,0 +1,40 @@
+<ips:template parameters="$veh" />
+{parse striping="fetchRows" classes="row1,row2"}
+{parse template="characterTabs" group="msrp"}
+<div class="ipsVerticalTabbed_content ipsLayout_content ipsBox_container">
+<div class="ipsPad">
+<div class="ipsVerticalTabbed_content ipsLayout_content gamehubMainContent">
+<h3 class="maintitle">Lista pojazdow w salonie</h3>
+<table class="ipb_table report_center">
+<tbody>
+<tr class="header">
+<td scope="col" class="short">Model</td>
+<td scope="col" class="short"></td>
+<td scope="col" class="short">Nazwa</td>
+<td scope="col" class="short">Kategoria</td>
+<td scope="col" class="short">Cena</td>
+</tr>
+<if test="count($veh)">
+<foreach loop="$veh as $row">
+<tr class="{parse striping="fetchRows"}">
+										<td class="short">{$row['model']}</td>
+										<td class="short"><img src="/public/vehicles/Vehicle_{$row['model']}.jpg" height="60"></td>
+										<td class="short">{$row['name']}</td>
+										<td class="short">{$row['category']}</td>
+										<td class="short">$ {$row['price']}</td>
+
+									</tr>
+								</foreach>
+								<else />
+								<tr><td colspan="3">Nie znaleziono żadnego auta.</td></tr>
+							</if>
+
+
+						</tbody>
+					</table>
+
+				</div>
+			</div>
+		</div>
+	</div>
+</div>

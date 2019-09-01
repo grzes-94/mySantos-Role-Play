@@ -1,0 +1,70 @@
+<ips:template parameters="$information,$members" />
+{parse striping="fetchMembers" classes="row2,row1"}
+{parse js_module="game"}
+<div class="maintitle ipsFilterbar clearfix">
+<ul class="ipsList_inline">
+{parse template="groupTabs" group="msrp"}
+</ul>
+</div>
+<div class="ipsCustomBox" style="width: 100%; float: left">
+<div class="ipsVerticalTabbed_content ipsLayout_content ipsBox_container">
+<div class="ipsPad">
+<fieldset class="row1">
+<form method="post" action>
+<table class="ipb_table report_center">
+<tbody>
+<tr class="header">
+<th scope="col"> &nbsp; </th>
+<th scope="col"> Pracownik </th>
+<th scope="col"> Ranga </th>
+<th scope="col"> Skin </th>
+<th scope="col"> Służba </th>
+<th scope="col"> Wypłata </th>
+<th scope="col"> Prowizja </th>
+<th scope="col"> Status </th>
+<th scope="col"> Ostatnio online </th>
+</tr>
+<if test="count( $members )">
+<foreach loop="$members as $member">
+<tr class='{parse striping="fetchMembers"}'>
+<td>
+<a hovercard-ref='member' hovercard-id='{$member['member_id']}' class='url fn  _hovertrigger' href='{parse url="showuser={$member['member_id']}" template="showuser" seotitle="{$member['members_display_name']}" base="public"}' title='{$this->lang->words['view_profile']}'>
+											{IPSMember::buildProfilePhoto($member['member_id'], $size=mini)}
+										</a>
+									</td>
+									<td >
+										{$member['nickname']}
+										<if test="$member['player_uid'] == $information['leader']">
+											<span class="ipsBadge ipsBadge_green reset_cursor">LIDER</span>
+										</if>
+									</td>
+									<td>
+										<if test="$member['rank']">{$member['rank']}: {$member['rank_name']}<else />Brak</if>
+									</td>
+									<td >
+										<img src="public/skins/Skin_{$member['skin']}.png" border="1px" solid="#ccc" background-position="45% 4%" height=30px>
+									</div>
+								</td>
+								<td>{$member['group_hours']} h {$member['group_minutes']} min</td>
+								<td >{$member['salary']}$</td>
+								<td >{$member['commission']}%</td>
+								<td >{$member['status']}</td>
+								<td >{parse date="$member['last_online']" format="DATE"}</td>
+							</tr>
+						</foreach>
+						<else />
+						<tr>
+							<td colspan="6">
+							Nie znaleziono pracowników.
+						</td>
+						</tr>
+					</if>
+					</tbody>
+				</table>
+				<fieldset class="submit">
+					<input type="hidden" class="input_submit" name="updateMembers" value="Zapisz" />
+				</fieldset>
+			</form>
+		</fieldset>
+	</div>
+</div>

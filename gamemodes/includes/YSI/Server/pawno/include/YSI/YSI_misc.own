@@ -1,0 +1,514 @@
+/*----------------------------------------------------------------------------*-
+					=================================
+					Y Sever Includes - Misc Functions
+					=================================
+Description:
+	Misc functions used throughout.
+Legal:
+	Copyright (C) 2007 Alex "Y_Less" Cole
+
+	This program is free software; you can redistribute it and/or
+	modify it under the terms of the GNU General Public License
+	as published by the Free Software Foundation; either version 2
+	of the License, or (at your option) any later version.
+
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with this program; if not, write to the Free Software
+	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+	MA 02110-1301, USA.
+Version:
+	0.1.3
+Changelog:
+	13/06/07:
+		Rewrote strcpy, now forces the max parameter for safe copying.
+	06/06/07:
+		Added ReturnPlayerName
+	14/05/07:
+		Added isodd for ease.
+	12/05/07:
+		Added iseven.
+	07/05/07:
+		Rewrote strcpy again.
+	15/04/07:
+		Updated StripNL to remove all trailing whitespace.
+	14/04/07:
+		Updated header documentation with more than changelog.
+	13/04/07:
+		Added strtolower and chrtolower.
+	24/03/07:
+		First version.
+Functions:
+	Public
+		-
+	Core:
+		-
+	Stock:
+		chrfind - Finds the position in a string of a single character.
+		chrnfind - Finds the position of the end of a character.
+		strcpy - Copies a string.
+		bernstein - Generates a bernstein hash of a string.
+		StripNL - Strips the newline characters from the end of a string.
+		strconcat - Concatenates strings and returns the result.
+		QSort - Itterative function for sorting by quicksort.
+		strtolower - Makes a string lowercase.
+		ReturnPlayerName - Returns a player's name;
+	Static:
+		-
+	Inline:
+		QuickSort - Entry point for QSort.
+		chrtolower - Makes a character lowercase.
+		ceildiv - Rounded up integer division.
+		floatdiv - Rounded down integer division.
+		iseven - Checks if a number is even (!iseven for isodd).
+	API:
+		-
+Callbacks:
+	-
+Definitions:
+	COLOR_WARN - Color used in warning messages.
+	MAX_STRING - Max standard length of a string.
+	MAX_LANGUAGES - Max number of loaded languages.
+	MAX_MODULES - Max number of loaded modules.
+	MAX_TEXT - Max number of loaded text entries per language.
+	MAX_COMMANDS - Maximum number of commands.
+	PLAYER_BIT_ARRAY - Number of cells required for players.
+	MAX_WORLDS - Default number of worlds used throughout.
+Enums:
+	-
+Macros:
+	-
+Tags:
+	-
+Variables:
+	Global:
+		TRUE - True hack for infinate loops.
+		FALSE - False hack for one-time loops.
+		NULL - 1 long string for passing via Call(Remote|Local)Function.
+	Static:
+		-
+Commands:
+	-
+Compile options:
+	-
+Operators:
+	xor == - Does an xor comparison on 2 values.
+-*----------------------------------------------------------------------------*/
+
+new
+	bool:TRUE = true,
+	bool:FALSE = false,
+	NULL[2] = {1, 0};
+#pragma unused TRUE, FALSE, NULL
+
+#if !defined COLOR_WARN
+	#define COLOR_WARN	0xFF0000AA
+#endif
+
+#if !defined MAX_STRING
+	#define MAX_STRING	256
+#endif
+
+#if !defined MAX_LANGUAGES
+	#define MAX_LANGUAGES		Language:4
+#endif
+
+#if !defined MAX_MODULES
+	#define MAX_MODULES			Module:10 // Absolute maximum is 50 (MAX_FILTER_SCRIPTS)
+#endif
+
+#if !defined MAX_TEXT
+	#define MAX_TEXT			256
+#endif
+
+#if !defined MAX_COMMANDS
+	#define MAX_COMMANDS		128
+#endif
+
+#if MAX_PLAYERS > 32
+	#define PLAYER_BIT_ARRAY Bit_Bits(MAX_PLAYERS)
+#else
+	#define PLAYER_BIT_ARRAY 2
+#endif
+
+#if defined _YSI_SYSTEM_GROUPS
+	#define DEFAULT_SEE 0
+#else
+	#define DEFAULT_SEE 1
+#endif
+
+#define MAX_WORLDS 256
+
+stock bool:operator==(xor:oper1, xor:oper2)
+	return (oper1 || oper2) && !(oper1 && oper2);
+
+/*----------------------------------------------------------------------------*-
+Function:
+	ceildiv
+Params:
+	num - Numerator.
+	div - Denominator.
+Return:
+	num / div rounded up.
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+#define ceildiv(%1,%2) \
+	(((%1) + (%2) - 1) / (%2))
+
+/*----------------------------------------------------------------------------*-
+Function:
+	iseven
+Params:
+	value - Value to check if is even.
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+#define iseven(%1) \
+	((((%1) / 2) * 2) == (%1))
+
+/*----------------------------------------------------------------------------*-
+Function:
+	isodd
+Params:
+	value - Value to check if is odd.
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+#define isodd(%1) \
+	(!iseven((%1)))
+
+/*----------------------------------------------------------------------------*-
+Function:
+	floordiv
+Params:
+	num - Numerator.
+	div - Denominator.
+Return:
+	num / div rounded down.
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+#define floordiv(%1,%2) \
+	(((%1) - (%2) + 1) / (%2))
+
+/*----------------------------------------------------------------------------*-
+Function:
+	chrfind
+Params:
+	needle - The character to find.
+	haystack[] - The string to find it in.
+	start - The offset to start from.
+Return:
+	Fail - -1, Success - pos
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock chrfind(needle, haystack[], start = 0)
+{
+	new
+		len = strlen(haystack);
+	while (start < len) if (haystack[start++] == needle) return start - 1;
+	return -1;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	chrnfind
+Params:
+	needle - The character to not find.
+	haystack[] - The string to find it in.
+	start - The offset to start from.
+Return:
+	Fail - -1, Success - pos
+Notes:
+	Opposite of chrfind, finds the end of a character.
+-*----------------------------------------------------------------------------*/
+
+stock chrnfind(needle, haystack[], start = 0)
+{
+	new
+		len = strlen(haystack);
+	while (start < len)
+	{
+		if (haystack[start] != needle) return start;
+		start++;
+	}
+	return -1;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	strcpy
+Params:
+	dest[] - Location to copy the string too.
+Return:
+	source[] - Location to copy the string from
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock strcpy(dest[], source[], max, len = -1)
+{
+	new
+		i;
+	if (len == -1) len = strlen(source);
+	while (i < len && i < max && (dest[i] = source[i])) i++;
+	if (i == len) dest[i == max ? i - 1 : i] = '\0';
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	bernstein
+Params:
+	string[] - the string to hash.
+Return:
+	the bernstein hash of the input string
+Notes:
+	This is a 32bit hash system as so is not very secure, however we're only
+	using this as a string enumerator to uniquely identify strings easilly
+	and allow for a binary search of strings based on the hash of their name.
+	crc32, then jenkins wer originally used however this is far faster, if a
+	little collision prone, but we're checking the strings manually anyway so
+	this doesn't matter as it would be done regardless of hash method, so this
+	doesn't need to be accounted for and speed is all that matters with at 
+	least at bit of non collision (the number of strings we're dealing with,
+	this should have none-few collisions).
+	
+	I modified it slightly from the original code pasted by aru, to code
+	closer to the code http://www.burtleburtle.net/bob/hash/doobs.html and
+	to work with PAWN (and shaved 0.2µs off the time for one call :D).
+	
+	Uber reduced version:
+	b(s[]){new h=-1,i,j;while((j=s[i++]))h=h*33+j;return h;}
+-*----------------------------------------------------------------------------*/
+
+stock bernstein(string[])
+{
+	new
+		hash = -1,
+		i,
+		j;
+	while ((j = string[i++])) hash = hash * 33 + j;
+	return hash;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	StripNL
+Params:
+	str[] - The string to remove the newline characters from
+Return:
+	-
+Notes:
+	Updated from old versions, should be more efficient
+-*----------------------------------------------------------------------------*/
+
+stock StripNL(str[])
+{
+	new
+		l = strlen(str);
+	while (l-- && str[l] <= ' ') str[l] = 0;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	strconcat
+Params:
+	...
+Return:
+	All passed strings concatenated.
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock strconcat(str1[], str2[])
+{
+	new
+		str[MAX_STRING],
+		c,
+		i,
+		j;
+	while ((c = str1[i++])) str[j++] = c;
+	i = 0;
+	while ((c = str2[i++])) str[j++] = c;
+	str[j] = '\0';
+	return str;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	quickSort
+Params:
+	numbers[] - Array of values you want sorting.
+	arraySize - Number of items.
+Return:
+	-
+Notes:
+	Entry point for the recursive q_sort function
+-*----------------------------------------------------------------------------*/
+
+#define QuickSort(%1,%2) \
+	QSort((%1), 0, (%2) - 1)
+
+/*----------------------------------------------------------------------------*-
+Function:
+	QSort
+Params:
+	numbers[] - Array of values to be sorted.
+	left - Start index in the array.
+	right - End index in the array.
+Return:
+	-
+Notes:
+	Adapted from: http://linux.wku.edu/~lamonml/algor/sort/quick.html
+	Implementation of the quicksort routine.
+-*----------------------------------------------------------------------------*/
+
+stock QSort(numbers[], left, right)
+{
+	new
+		pivot = numbers[left],
+		l_hold = left,
+		r_hold = right;
+	while (left < right)
+	{
+		while ((numbers[right] >= pivot) && (left < right)) right--;
+		if (left != right)
+		{
+			numbers[left] = numbers[right];
+			left++;
+		}
+		while ((numbers[left] <= pivot) && (left < right)) left++;
+		if (left != right)
+		{
+			numbers[right] = numbers[left];
+			right--;
+		}
+	}
+	numbers[left] = pivot;
+	pivot = left;
+	left = l_hold;
+	right = r_hold;
+	if (left < pivot) QSort(numbers, left, pivot - 1);
+	if (right > pivot) QSort(numbers, pivot + 1, right);
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	chrtolower
+Params:
+	chr - Character to make lowercase.
+Return:
+	Lowercase character.
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+#define chrtolower(%1) \
+	(((%1) > 0x40 && (%1) <= 0x5A) ? ((%1) | 0x20) : (%1))
+
+/*----------------------------------------------------------------------------*-
+Function:
+	strtolower
+Params:
+	string[] - String to make lower case.
+Return:
+	Lowercase string.
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock strtolower(string[])
+{
+	new
+		retStr[MAX_STRING],
+		i,
+		j;
+	while ((j = string[i])) retStr[i++] = chrtolower(j);
+	retStr[i] = '\0';
+	return retStr;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	hexstr
+Params:
+	string[] - String to convert to a number.
+Return:
+	value of the passed hex string.
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock hexstr(string[])
+{
+	new
+		ret,
+		num,
+		i;
+	if (string[0] == '0' && string[1] == 'x') i = 2;
+	while (string[i])
+	{
+		ret <<= 4;
+		num = string[i++];
+		switch (num)
+		{
+			case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9': ret += num - 0x30;
+			case 'A', 'B', 'C', 'D', 'E', 'F': ret += num - 0x37;
+			case 'a', 'b', 'c', 'e', 'e', 'f': ret += num - 0x57;
+			default: break;
+		}
+	}
+	return ret;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	binstr
+Params:
+	string[] - String to try convert to a boolean.
+Return:
+	bool: passed boolean.
+Notes:
+	This can take a number of ways of representing booleans - 0, false and
+	nothing there.  Anything not one of those things (false is not case
+	sensitive) is assumed true.
+-*----------------------------------------------------------------------------*/
+
+stock bool:binstr(string[])
+{
+	if (!string[0] || string[0] == '0' || !strcmp(string, "false", true)) return false;
+	return true;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	ReturnPlayerName
+Params:
+	playerid - Player to get the name of;
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock ReturnPlayerName(playerid)
+{
+	new name[MAX_PLAYER_NAME];
+	GetPlayerName(playerid, name, MAX_PLAYER_NAME);
+	return name;
+}

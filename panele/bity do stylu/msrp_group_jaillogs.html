@@ -1,0 +1,59 @@
+<ips:template parameters="$logs" />
+{parse striping="fetchLogs" classes="row2,row1"}
+{parse js_module="game"}
+<div class="maintitle ipsFilterbar clearfix">
+<ul class="ipsList_inline">
+{parse template="groupTabs" group="msrp"}
+</ul>
+</div>
+<div class="ipsCustomBox" style="width: 100%; float: left">
+<div class="ipsVerticalTabbed_content ipsLayout_content ipsBox_container">
+<div class="ipsPad">
+<fieldset class="row1">
+<form method="post" action>
+<table class="ipb_table report_center">
+<tbody>
+<tr class="header">
+<th scope="col"> &nbsp; </th>
+<th scope="col"> Pracownik</th>
+<th scope="col"> Osoba</th>
+<th scope="col"> Typ </th>
+<th scope="col"> Czas </th>
+</tr>
+<if test="count( $logs )">
+<foreach loop="$logs as $member">
+<tr class='{parse striping="fetchLogs"}'>
+<td>
+<a hovercard-ref='member' hovercard-id='{$member['from_gid']}' class='url fn  _hovertrigger' href='{parse url="showuser={$member['from_gid']}" template="showuser" base="public"}' title='{$this->lang->words['view_profile']}'>
+											{IPSMember::buildProfilePhoto($member['from_gid'], $size=mini)}
+										</a>
+									</td>
+									<td >
+										{$member['from']}
+									</td>
+									<td >
+										{$member['to']}
+									</td>
+                  <td >
+										{$member['type']}
+									</td>
+									<td >
+										{parse date="$member['time']" format="short"}
+									</td>
+
+
+								</tr>
+							</foreach>
+							<else />
+							<tr>
+								<td colspan='6'>
+									Brak logów.
+								</td>
+						</if>
+						</tbody>
+					</table>
+				</form>
+			</fieldset>
+		</div>
+	</div>
+</div>

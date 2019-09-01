@@ -1,0 +1,24 @@
+<ips:template parameters="$characters" />
+{parse template="characterTabs" group="msrp"}
+<div class="ipsVerticalTabbed_content ipsLayout_content ipsBox_container">
+<div class="ipsPad">
+<form method="post" action="index.php?app=msrp&module=group">
+<h2 class="ipsType_subtitle ipsSettings_pagetitle">Wybór grupy</h2>
+<p style="margin: 0 0 10px 0;" align="center">
+<img src="public/icons/group.png" width="128px">
+<fieldset class="submit">
+<select name="choice" style="min-width: 100px;">
+<if test="count($characters)">
+<foreach loop="$characters as $row">
+<option value="{$row['player_uid']}">{$row['nickname']}</option>
+</foreach>
+<else />
+<option value="0">(Brak postaci)</option>
+</if>
+</select>
+<input type="submit" value="Przejdź do wyboru grupy" name="choose_char" class="input_submit">
+</fieldset>
+</p>
+</form>
+</div>
+</div>

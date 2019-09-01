@@ -1,0 +1,24 @@
+[connect]
+YSI_GREETING = Welcome to YSI %s - you are player id %d!
+
+[properties]
+YSI_PROP_NAME = Property: "%s" Cost: $%d Reward: $%d
+YSI_PROP_BUY = Type "/%n" to buy
+YSI_PROP_OWN = You already own this property
+YSI_PROP_YOURS = This property is owned by you
+YSI_PROP_OUT = The "%s" has been bought by %s (%d)
+YSI_PROP_OWNER = This property is owned by %s (%d)
+YSI_PROP_BOUGHT = You bought the "%s" for $%d
+YSI_PROP_NOT = You are not at a valid property
+YSI_PROP_CP = You are not at a property checkpoint
+YSI_PROP_AFFORD = You cannot afford this property
+YSI_PROP_EARNT = You earnt $%d from your properties
+
+[race]
+MTA_JOINED = You joined the race
+MTA_START = The race is about to begin
+MTA_FIRST = You won - prize $%d!
+MTA_LOST = You suck!
+
+[ignore]
+THIS_TEXT_IS_NEVER_LOADED = Because no part of the script registers the tag "ignore"

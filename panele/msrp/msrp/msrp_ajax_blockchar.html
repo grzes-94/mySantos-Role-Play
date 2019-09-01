@@ -1,0 +1,24 @@
+<ips:template parameters="$row" />
+<if test="$this->request['block_status'] == 1">
+<h3> Blokada postaci {$row['name']} </h3>
+<br />
+<center>
+<span style="margin-left: 10px; margin-right: 10px"> Jeżeli chcesz dokończyć procedurę <u>blokady</u> postaci potwierdź swoją akcję poprzez kliknięcie w przycisk <strong> Zablokuj </strong>. Postać {$row['name']} zostanie automatycznie zablokowana na nieokreślony czas.</span>
+<br /><br />
+<form method="post" action="index.php?app=msrp&module=ajax&section=blockchar&char_id={$this->request['char_id']}&block_status={$this->request['block_status']}&md5check={$this->request['md5check']}">
+<input type="submit" name="block_char_submit" class="ipsButton" value="Zablokuj" /> <input type="submit" name="block_char_cancel" class="ipsButton" value="Anuluj" />
+</form>
+<br />
+</center>
+<else />
+<h3> Odblokowanie postaci {$row['name']} </h3>
+<br />
+<center>
+<span style="margin-left: 10px; margin-right: 10px"> Jeżeli chcesz dokończyć procedurę <u>odblokowania</u> postaci potwierdź swoją akcję poprzez kliknięcie w przycisk <strong> Odblokuj </strong>. Postać {$row['name']} zostanie automatycznie odblokowana.</span>
+<br /><br />
+<form method="post" action="index.php?app=msrp&module=ajax&section=blockchar&char_id={$this->request['char_id']}&block_status={$this->request['block_status']}&md5check={$this->request['md5check']}">
+<input type="submit" name="block_char_submit" class="ipsButton" value="Odblokuj" /> <input type="submit" name="block_char_cancel" class="ipsButton" value="Anuluj" />
+</form>
+<br />
+</center>
+</if>

@@ -1,0 +1,663 @@
+/*----------------------------------------------------------------------------*-
+					===================================
+					Y Sever Includes - Checkpoints Core
+					===================================
+Description:
+	Handles checkpoint streaming for >1 checkpoint per player.
+Legal:
+	Copyright (C) 2007 Alex "Y_Less" Cole
+
+	This program is free software; you can redistribute it and/or
+	modify it under the terms of the GNU General Public License
+	as published by the Free Software Foundation; either version 2
+	of the License, or (at your option) any later version.
+
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with this program; if not, write to the Free Software
+	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+	MA 02110-1301, USA.
+Version:
+	0.1.1
+Changelog:
+	06/06/07:
+		Added internal calling for system custom callbacks.
+	07/05/07:
+		Added groups support vis default values.
+	04/05/07:
+		Changed loop to not GetPlayerPos for every checkpoint.
+	02/05/07:
+		Added YSI_ prefix to all globals.
+		Removed all world and all player flags, just uses bits now.
+		Changed (Enter|Leave) to OnPlayer(Enter|Leave)Checkpoint.
+	18/04/07:
+		Added checkpoint entry handling.
+	16/04/07:
+		First version.
+Functions:
+	Public:
+		Checkpoint_Loop
+	Core:
+		Checkpoint_Checkpoint
+		Checkpoint_OnPlayerEnterCheckpoint
+		Checkpoint_OnPlayerLeaveCheckpoint
+	Stock:
+		Checkpoint_SetActive
+		Checkpoint_SetAllWorlds
+		Checkpoint_SetAllPlayers
+		Checkpoint_AddPlayer
+		Checkpoint_RemovePlayer
+		Checkpoint_AddVW
+		Checkpoint_RemoveVW
+		Checkpoint_GetDifference
+		Checkpoint_HasPlayer
+		Checkpoint_Get
+	Static:
+		-
+	Inline:
+		Checkpoint_IsActive
+		Checkpoint_IsValid
+		Checkpoint__AddPlayer
+		Checkpoint__RemovePlayer
+		Checkpoint__AddVW
+		Checkpoint__RemoveVW
+	API:
+		CreateCheckpoint
+		IsValidCheckpoint
+		DestroyCheckpoint
+Callbacks:
+	OnPlayerEnterCheckpointEx
+	OnPlayerLeaveCheckpointEx
+Definitions:
+	MAX_CHECKPOINTS - Number of checkpoints in the system.
+	NO_CHECKPOINT - Fail return.
+	CHECKPOINT_WORLDS - Max number of worlds which can have checkpoints.
+	CHECKPOINT_WORLDS_BITS - Cells required for world bit array.
+	CHECKPOINT_PLAYER_BITS - Cells required for player bit array.
+	CHECKPOINT_LOOP_GRANULARITY - Number of times to process a second.
+	CHECKPOINT_VIEW_DISTANCE - Distance from checkpoint to see it.
+	_CHECKPOINT_DISTANCE - CHECKPOINT_VIEW_DISTANCE squared.
+Enums:
+	e_CHECK_FLAG - Flags for checkpoints.
+	E_CHECKPOINTS - Structure for checkpoint data.
+Macros:
+	-
+Tags:
+	e_Check_Flag - Flags for checkpoints.
+Variables:
+	Global:
+		-
+	Static:
+		YSI_g_sCheckpointPoints - Array of checkpoint data.
+		YSI_g_sCheckpointCount - Number of checkpoints in the system.
+		YSI_g_sPlayerCP - The current checkpoint of a player.
+Commands:
+	-
+Compile options:
+	CHECKPOINT_WORLDS 0 - Disables world processing.
+	CHECKPOINT_LOCAL - Makes callback calls local to the current script.
+Operators:
+	-
+-*----------------------------------------------------------------------------*/
+
+#if !defined MAX_CHECKPOINTS
+	#define MAX_CHECKPOINTS 128
+#endif
+
+#define NO_CHECKPOINT -1
+
+#if !defined CHECKPOINT_WORLDS
+	#define CHECKPOINT_WORLDS MAX_WORLDS
+#endif
+
+#if CHECKPOINT_WORLDS > 0
+	#if CHECKPOINT_WORLDS <= 32
+		#define CHECKPOINT_WORLDS_BITS 2
+	#else
+		#define CHECKPOINT_WORLDS_BITS Bit_Bits(CHECKPOINT_WORLDS)
+	#endif
+#endif
+
+#if !defined CHECKPOINT_LOOP_GRANULARITY
+	#define CHECKPOINT_LOOP_GRANULARITY 5
+#endif
+
+#if !defined CHECKPOINT_VIEW_DISTANCE
+	#define CHECKPOINT_VIEW_DISTANCE 100.0
+#endif
+#define _CHECKPOINT_DISTANCE ((CHECKPOINT_VIEW_DISTANCE) * (CHECKPOINT_VIEW_DISTANCE))
+
+enum e_CHECK_FLAG (<<= 1)
+{
+	e_CHECK_FLAG_SHOW = 0x100,
+	e_CHECK_FLAG_ACTIVE,
+	e_CHECK_FLAG_PLAYERS,
+	e_CHECK_FLAG_WORLDS
+}
+
+enum E_CHECKPOINTS
+{
+	Float:E_CHECKPOINTS_X,
+	Float:E_CHECKPOINTS_Y,
+	Float:E_CHECKPOINTS_Z,
+	Float:E_CHECKPOINTS_S,
+	E_CHECKPOINTS_GROUP,
+	Bit:E_CHECKPOINTS_PLAYERS[PLAYER_BIT_ARRAY],
+	#if CHECKPOINT_WORLDS > 0
+		Bit:E_CHECKPOINTS_VW[CHECKPOINT_WORLDS_BITS],
+	#endif
+	e_CHECK_FLAG:E_CHECKPOINTS_FLAGS
+}
+
+forward Checkpoint_Loop();
+
+static
+	YSI_g_sCheckpointPoints[MAX_CHECKPOINTS][E_CHECKPOINTS],
+	YSI_g_sCheckpointCount,
+	YSI_g_sPlayerCP[MAX_PLAYERS];
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Checkpoint_IsActive
+Params:
+	cpid
+Return:
+	Checkpoint active state.
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+#define Checkpoint_IsActive(%1) \
+	(YSI_g_sCheckpointPoints[(%1)][E_CHECKPOINTS_FLAGS] & e_CHECK_FLAG_ACTIVE)
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Checkpoint_IsValid
+Params:
+	cpid - Checkpoint to check.
+Return:
+	Is the checkpoint valid.
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+#define Checkpoint_IsValid(%1) \
+	((%1) >= 0 && (%1) < MAX_CHECKPOINTS && Checkpoint_IsActive((%1)))
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Checkpoint_SetActive
+Params:
+	cpid - Checkpoint to modify.
+	set - State to set to.
+Return:
+	-
+Notes:
+	Sets whether or not this checkpoint is active.
+-*----------------------------------------------------------------------------*/
+
+stock Checkpoint_SetActive(cpid, set)
+{
+	if (set) YSI_g_sCheckpointPoints[cpid][E_CHECKPOINTS_FLAGS] |= e_CHECK_FLAG_ACTIVE;
+	else YSI_g_sCheckpointPoints[cpid][E_CHECKPOINTS_FLAGS] &= ~e_CHECK_FLAG_ACTIVE;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Checkpoint_SetAllWorlds
+Params:
+	cpid - Checkpoint to modify.
+	set - State of worlds.
+Return:
+	-
+Notes:
+	Sets or unsets all worlds having this checkpoint.
+-*----------------------------------------------------------------------------*/
+
+stock Checkpoint_SetAllWorlds(cpid, set)
+{
+	#if CHECKPOINT_WORLDS > 0
+		if (Checkpoint_IsValid(cpid)) Bit_SetAll(YSI_g_sCheckpointPoints[cpid][E_CHECKPOINTS_VW], set);
+	#endif
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Checkpoint_SetAllPlayers
+Params:
+	cpid - Checkpoint to modify.
+	set - State of players.
+Return:
+	-
+Notes:
+	Sets or unsets all players being able to see this checkpoint.
+-*----------------------------------------------------------------------------*/
+
+stock Checkpoint_SetAllPlayers(cpid, set)
+{
+	if (Checkpoint_IsValid(cpid))
+	{
+		Bit_SetAll(YSI_g_sCheckpointPoints[cpid][E_CHECKPOINTS_PLAYERS], set);
+		if (set) YSI_g_sCheckpointPoints[cpid][E_CHECKPOINTS_FLAGS] |= e_CHECK_FLAG_PLAYERS;
+		else YSI_g_sCheckpointPoints[cpid][E_CHECKPOINTS_FLAGS] &= ~e_CHECK_FLAG_PLAYERS;
+	}
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Checkpoint__AddPlayer
+Params:
+	cpid - Checkpoint to modify.
+	playerid - Player to add to visibility.
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+#define Checkpoint__AddPlayer(%1,%2) \
+	Bit_Set(YSI_g_sCheckpointPoints[(%1)][E_CHECKPOINTS_PLAYERS], (%2), 1)
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Checkpoint__RemovePlayer
+Params:
+	cpid - Checkpoint to modify.
+	playerid - Player to remove from visibility.
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+#define Checkpoint__RemovePlayer(%1,%2) \
+	Bit_Set(YSI_g_sCheckpointPoints[(%1)][E_CHECKPOINTS_PLAYERS], (%2), 0)
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Checkpoint__AddVW
+Params:
+	cpid - Checkpoint to modify.
+	vwid - World to add to visibility.
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+#define Checkpoint__AddVW(%1,%2) \
+	Bit_Set(YSI_g_sCheckpointPoints[(%1)][E_CHECKPOINTS_VW], (%2), 1)
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Checkpoint__RemoveVW
+Params:
+	cpid - Checkpoint to modify.
+	vwid - World to remove from visibility.
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+#define Checkpoint__RemoveVW(%1,%2) \
+	Bit_Set(YSI_g_sCheckpointPoints[(%1)][E_CHECKPOINTS_VW], (%2), 0)
+
+/*----------------------------------------------------------------------------*-
+Function:
+	CreateCheckpoint
+Params:
+	Float:x - X position.
+	Float:y - Y position.
+	Float:z - Z position.
+	Float:size - Size.
+Return:
+	Checkpoint id or NO_CHECKPOINT on fail.
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock CreateCheckpoint(Float:x, Float:y, Float:z, Float:size)
+{
+	if (YSI_g_sCheckpointCount >= MAX_CHECKPOINTS) return NO_CHECKPOINT;
+	new
+		i;
+	while (i < MAX_CHECKPOINTS)
+	{
+		if (!Checkpoint_IsActive(i)) break;
+		i++;
+	}
+	if (i == MAX_CHECKPOINTS) return NO_CHECKPOINT;
+	Checkpoint_SetActive(i, 1);
+	Checkpoint_SetAllWorlds(i, 1);
+	YSI_g_sCheckpointPoints[i][E_CHECKPOINTS_X] = x;
+	YSI_g_sCheckpointPoints[i][E_CHECKPOINTS_Y] = y;
+	YSI_g_sCheckpointPoints[i][E_CHECKPOINTS_Z] = z;
+	YSI_g_sCheckpointPoints[i][E_CHECKPOINTS_S] = size;
+	YSI_g_sCheckpointCount++;
+	return i;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	IsValidCheckpoint
+Params:
+	cpid - Checkpoint to check.
+Return:
+	If the checkpoint is valid.
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock IsValidCheckpoint(cpid)
+{
+	if (Checkpoint_IsValid(cpid)) return 1;
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	DestroyCheckpoint
+Params:
+	cpid - Checkpoint to destroy.
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock DestroyCheckpoint(cpid)
+{
+	if (Checkpoint_IsValid(cpid))
+	{
+		Checkpoint_SetActive(cpid, 0);
+		YSI_g_sCheckpointCount--;
+	}
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Checkpoint_AddPlayer
+Params:
+	cpid - Checkpoint to modify.
+	playerid - Player to add to visibility.
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock Checkpoint_AddPlayer(cpid, playerid)
+{
+	if (Checkpoint_IsValid(cpid)) Checkpoint__AddPlayer(cpid, playerid);
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Checkpoint_RemovePlayer
+Params:
+	cpid - Checkpoint to modify.
+	playerid - Player to remove from visibility.
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock Checkpoint_RemovePlayer(cpid, playerid)
+{
+	if (Checkpoint_IsValid(cpid)) Checkpoint__RemovePlayer(cpid, playerid);
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Checkpoint_AddVW
+Params:
+	cpid - Checkpoint to modify.
+	vwid - World to add to visibility.
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock Checkpoint_AddVW(cpid, vwid)
+{
+	#if CHECKPOINT_WORLDS > 0
+		if (Checkpoint_IsValid(cpid)) Checkpoint__AddVW(cpid, vwid);
+	#else
+		#pragma unused cpid, vwid
+	#endif
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Checkpoint_RemoveVW
+Params:
+	cpid - Checkpoint to modify.
+	vwid - World to remove from visibility.
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock Checkpoint_RemoveVW(cpid, vwid)
+{
+	#if CHECKPOINT_WORLDS > 0
+		if (Checkpoint_IsValid(cpid)) Checkpoint__RemoveVW(cpid, vwid);
+	#else
+		#pragma unused cpid, vwid
+	#endif
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Checkpoint_GetDifference
+Params:
+	x - X point.
+	y - Y point.
+	z - Z point.
+Return:
+	Squared distance to origin.
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock Float:Checkpoint_GetDifference(Float:x, Float:y, Float:z)
+{
+	return ((x * x) + ((y * y) + (z * z)));
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Checkpoint_IsGlobal
+Params:
+	checkpoint - Checkpoint to check
+Return:
+	-
+Notes:
+	Checks if a checkpoint is visible by default.
+-*----------------------------------------------------------------------------*/
+
+stock Checkpoint_IsGlobal(checkpoint)
+{
+	if (Checkpoint_IsValid(checkpoint)) return YSI_g_sCheckpointPoints[E_CHECKPOINTS_FLAGS] & e_CHECK_FLAG_PLAYERS;
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Checkpoint_HasPlayer
+Params:
+	cpid - Checkpoint to check.
+	playerid - Player to check for.
+Return:
+	-
+Notes:
+	Checks if a player can see the checkpoint.
+-*----------------------------------------------------------------------------*/
+
+stock Checkpoint_HasPlayer(cpid, playerid)
+{
+	#if CHECKPOINT_WORLDS > 0
+		if (Bit_Get(YSI_g_sCheckpointPoints[cpid][E_CHECKPOINTS_VW], GetPlayerVirtualWorld(playerid)))
+		{
+	#endif
+			if (Bit_Get(YSI_g_sCheckpointPoints[cpid][E_CHECKPOINTS_PLAYERS], playerid)) return 1;
+	#if CHECKPOINT_WORLDS > 0
+		}
+	#endif
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Checkpoint_Checkpoint
+Params:
+	-
+Return:
+	-
+Notes:
+	Constructor, sets up the main loop.
+-*----------------------------------------------------------------------------*/
+
+Checkpoint_Checkpoint()
+{
+	static
+		sTimer;
+	if (sTimer) return 0;
+	sTimer = SetTimer("Checkpoint_Loop", 1000 / CHECKPOINT_LOOP_GRANULARITY, 1);
+	return 1;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Checkpoint_OnPlayerConnect
+Params:
+	playerid
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+Checkpoint_OnPlayerConnect(playerid)
+{
+	YSI_g_sPlayerCP[playerid] = NO_CHECKPOINT;
+	return 1;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Checkpoint_Loop
+Params:
+	-
+Return:
+	-
+Notes:
+	Processes which checkpoint should be displayed for any player at any one
+	time.
+-*----------------------------------------------------------------------------*/
+
+public Checkpoint_Loop()
+{
+	for (new j = 0; j < MAX_PLAYERS; j++)
+	{
+		if (!IsPlayerConnected(j)) continue;
+		new
+			i,
+			Float:distance = _CHECKPOINT_DISTANCE,
+			Float:temp,
+			dis = NO_CHECKPOINT,
+			Float:x,
+			Float:y,
+			Float:z;
+		GetPlayerPos(j, x, y, z);
+		for (; i < MAX_CHECKPOINTS; i++)
+		{
+			if (!Checkpoint_IsActive(i) || !Checkpoint_HasPlayer(i, j)) continue;
+			temp = Checkpoint_GetDifference(x - YSI_g_sCheckpointPoints[i][E_CHECKPOINTS_X], y - YSI_g_sCheckpointPoints[i][E_CHECKPOINTS_Y], z - YSI_g_sCheckpointPoints[i][E_CHECKPOINTS_Z]);
+			if (temp < distance)
+			{
+				distance = temp;
+				dis = i;
+			}
+		}
+		if (dis != NO_CHECKPOINT && YSI_g_sPlayerCP[j] != dis)
+		{
+			SetPlayerCheckpoint(j, YSI_g_sCheckpointPoints[dis][E_CHECKPOINTS_X], YSI_g_sCheckpointPoints[dis][E_CHECKPOINTS_Y], YSI_g_sCheckpointPoints[dis][E_CHECKPOINTS_Z], YSI_g_sCheckpointPoints[dis][E_CHECKPOINTS_S]);
+			YSI_g_sPlayerCP[j] = dis;
+		}
+	}
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Checkpoint_Get
+Params:
+	playerid - Player to get current checkpoint of.
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock Checkpoint_Get(playerid)
+{
+	return YSI_g_sPlayerCP[playerid];
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Checkpoint_OnPlayerEnterCheckpoint
+Params:
+	playerid - Player who entered the checkpoint.
+Return:
+	-
+Notes:
+	Calls the internal functions itself.
+-*----------------------------------------------------------------------------*/
+
+#define Checkpoint_OnPlayerEnterCheckpoint Checkpoint_OnPlayerEnterCP
+
+Checkpoint_OnPlayerEnterCheckpoint(playerid)
+{
+	new
+		ret;
+	#if defined _YSI_GAMEMODE_PROPERTIES
+		ret = Property_OnPlayerEnterCP(playerid, YSI_g_sPlayerCP[playerid]) ? 1 : ret;
+	#endif
+	#if defined CHECKPOINT_LOCAL
+		ret = CallLocalFunction("OnPlayerEnterCheckpointEx", "ii", playerid, YSI_g_sPlayerCP[playerid]) ? 1 : ret;
+	#else
+		ret = CallRemoteFunction("OnPlayerEnterCheckpointEx", "ii", playerid, YSI_g_sPlayerCP[playerid]) ? 1 : ret;
+	#endif
+	return ret;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Checkpoint_OnPlayerLeaveCheckpoint
+Params:
+	playerid - Player who left the checkpoint.
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+#define Checkpoint_OnPlayerLeaveCheckpoint Checkpoint_OnPlayerLeaveCP
+
+Checkpoint_OnPlayerLeaveCheckpoint(playerid)
+{
+	#if defined CHECKPOINT_LOCAL
+		return CallLocalFunction("OnPlayerLeaveCheckpointEx", "ii", playerid, YSI_g_sPlayerCP[playerid]);
+	#else
+		return CallRemoteFunction("OnPlayerLeaveCheckpointEx", "ii", playerid, YSI_g_sPlayerCP[playerid]);
+	#endif
+}

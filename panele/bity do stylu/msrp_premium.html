@@ -1,0 +1,175 @@
+<ips:template parameters="$success, $premium_end" />
+{parse striping="fetchRows" classes="row1,row2"}
+{parse template="characterTabs" group="msrp"}
+<div class="ipsVerticalTabbed_content ipsLayout_content ipsBox_container">
+<div class="ipsPad">
+<if test="$success == -2">
+<div class="message error">Kod niepoprawny, upewnij się czy kod nie został użyty wcześniej.</div><br />
+</if>
+<if test="$success == -1">
+<div class="message error">Wprowadzony kod jest niepoprawny.</div><br />
+</if>
+<if test="$success == 1">
+<div class="message">Kod prawidłowy, konto premium zostało aktywowane.</div><br />
+</if>
+<if test="$success == 2">
+<div class="message">Kod prawidłowy, skontaktuj się z Infinity w celu wgrania skina.</div><br />
+</if>
+<if test="$premium_end > IPS_UNIX_TIME_NOW">
+<div class="message positive">
+<center>Twoje konto premium jest aktywne do: {parse date="$premium_end" format="SHORT" relative="false"}
+<br />
+Dziękujemy za wsparcie projektu!
+</center>
+</div>
+</if>
+<div class="ipsBox">
+<table class="ipb_table report_center">
+<tbody>
+<tr class="header">
+<th scope="col" class="short">Opcja</td>
+<th scope="col" class="short">Użytkownik</th>
+<th scope="col" class="short">Konto premium</th>
+</tr>
+<tr class="{parse striping="fetchRows"}">
+							<th scope="row">Score za godzinę gry</th>
+							<td class="short">10</td>
+							<td class="short">15</td>
+						</tr>
+						<tr class="{parse striping="fetchRows"}">
+							<th scope="row">Ilość zespawnowanych pojazdów</th>
+							<td class="short">1</td>
+							<td class="short">3</td>
+						</tr>
+						<tr class="{parse striping="fetchRows"}">
+							<th scope="row">Ilość obiektów doczepialnych</th>
+							<td class="short">3</td>
+							<td class="short">5</td>
+						</tr>
+						<tr class="{parse striping="fetchRows"}">
+							<th scope="row">Ilość posiadanych slotów na grupy</th>
+							<td class="short">3</td>
+							<td class="short">5</td>
+						</tr>
+						<tr class="{parse striping="fetchRows"}">
+							<th scope="row">Mozliwośc założenia nowej postaci od</th>
+							<td class="short">10h</td>
+							<td class="short">3h</td>
+						</tr>
+						<tr class="{parse striping="fetchRows"}">
+							<th scope="row">Możliwość ukrycia postaci</th>
+							<td class="short">Nie</td>
+							<td class="short">Tak</td>
+						</tr>
+						<tr class="{parse striping="fetchRows"}">
+							<th scope="row">Kolorowy opis postaci oraz pojazdu</th>
+							<td class="short">Nie</td>
+							<td class="short">Tak</td>
+						</tr>
+						<tr class="{parse striping="fetchRows"}">
+							<th scope="row">Wyróżniona ranga na forum</th>
+							<td class="short">Nie</td>
+							<td class="short">Tak</td>
+						</tr>
+						<tr class="{parse striping="fetchRows"}">
+							<th scope="row">Wyróżniony nick na liście graczy</th>
+							<td class="short">Nie</td>
+							<td class="short">Tak</td>
+						</tr>
+						<tr class="{parse striping="fetchRows"}">
+							<th scope="row">Własna, unikalna rejestracja pojazdu</th>
+							<td class="short">Nie</td>
+							<td class="short">Tak</td>
+						</tr>
+						<tr class="{parse striping="fetchRows"}">
+							<th scope="row">Dostęp do ukrytego działu</th>
+							<td class="short">Nie</td>
+							<td class="short">Tak</td>
+						</tr>
+						<tr class="{parse striping="fetchRows"}">
+							<th scope="row">Ukryte logi kar</th>
+							<td class="short">Nie</td>
+							<td class="short">Tak</td>
+						</tr>
+						<tr class="{parse striping="fetchRows"}">
+							<th scope="row">Trzycyfrowy numer telefonu (+ własna nazwa telefonu)</th>
+							<td class="short">Nie</td>
+							<td class="short">Tak</td>
+						</tr>
+						<tr class="{parse striping="fetchRows"}">
+							<th scope="row">Możliwość kliknięcia na gracza pod TAB (informacje o nim)</th>
+							<td class="short">Nie</td>
+							<td class="short">Tak</td>
+						</tr>
+						<tr class="{parse striping="fetchRows"}">
+							<th scope="row">Kolor pojazdu kupowanego w salonie</th>
+							<td class="short">Losowy</td>
+							<td class="short">Własny</td>
+						</tr>
+						<tr class="{parse striping="fetchRows"}">
+							<th scope="row">Dostęp do specjalnego kanału na discordzie</th>
+							<td class="short">Nie</td>
+							<td class="short">Tak</td>
+						</tr>
+						<tr class="{parse striping="fetchRows"}">
+							<th scope="row">Edycja profilu CSS/HTML na forum</th>
+							<td class="short">Nie</td>
+							<td class="short">Tak</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+			<br />
+			<div class="ipsBox" >
+
+
+				<fieldset class="ipsSettings_section">
+					<center>
+
+						<font color=Red>Pamiętaj:<br>* aby zachować minimum 5 minut odstępu między kolejno wysłanymi smsami z tego samego numeru telefonu,<br>* o istnieniu domyślnego limitu 35PLN (brutto) na jeden numer telefonu / MIESIĄC.<br>Wartość tą można zmienić za darmo u operatora (darmowy SMS/kod USSD), wystarczy <a href="https://i.imgur.com/rdwl6Og.png" target="_blank">kliknąć w ten link obrazka</a>.</font><br /><br />
+						Płatności obsługuje:<br />
+						<a href="https://hotpay.pl/" target="_blank"><img src="https://hotpay.pl/assets/img/logo.png" style="height:20px" /></a><br><br>
+<a href="https://hotpay.pl/dokumentacja/regulamin-dla-klientow.pdf" target="_blank">> Regulamin usługi SMS PREMIUM < </a><br><br>
+Obsługiwane sieci wszystkich polskich operatorów.<br><br>
+						<b>Zakup konta premium przez SMS</b><br />
+						Aby przedłużyć konto premium o 30 dni wyślij SMS o treści: <b>AVR.PREM</b> pod numer: <b>79550</b>.<br />
+						Koszt SMS: <b>9 PLN netto / 11.07 PLN brutto</b>.<br /><br>
+						<form method="post">
+							<input type="text" name="smscode" class="input_text" size="20" placeholder="Kod SMS - PREMIUM" maxlength="10" required> 
+
+							<input type="submit" style="margin-top: 2px;"class="ipsButton_secondary" name="smsactivate" size="15" value="Aktywuj">
+						</form>
+<br /><br /><a href="https://mysantos-rp.pl/index.php?/forum-0/announcement-5-regulamin-unikalnych-skin%C3%B3w/" target="_blank">> Przed zakupem zapoznaj się z regulaminem skinów <</a><br>
+						<b>Zakup unikalnego skina przez SMS</b><br />
+						Aby zakupić unikalnego skina wyślij SMS o treści: <b>AVR.SKIN</b> pod numer: <b>92505</b>.<br />
+						Koszt SMS: <b>25 PLN netto / 30.75 PLN brutto</b>.<br /><br>
+<form method="post">
+							<input type="text" name="skincode" class="input_text" size="20" placeholder="Kod SMS - SKIN" maxlength="10" required> 
+
+							<input type="submit" style="margin-top: 2px;"class="ipsButton_secondary" name="skinactivate" size="15" value="Aktywuj">
+						</form>
+<br />
+<br />
+						<b>Zakup poprzez wpłatę/przelew, PaySafeCard lub serwis PayPal</b><br />
+						Aby zakupić premium lub unikalny skin należy skontaktować się z <a href="index.php?showuser=1">{IPSMember::makeNameFormatted( Infinity,4)}</a> na PW w celu otrzymania danych (nie dotyczy płatności poprzez PayPal, o tym niżej).<br /><br>
+						Koszt <u>konta premium</u> zakupionego w taki sposób: <br />
+14 dni - 5 zł | 30 dni - 7 zł | 60 dni - 12 zł <br />
+W przypadku płatności przez PaySafeCard za <u>konto premium</u> zostaje doliczona prowizja w wysokości 14% kwoty.<br><br>
+						Koszt <u>unikalnego skina</u> zakupionego w taki sposób: 15zł<br />
+						W przypadku płatności przez PaySafeCard za <u>unikalny skin</u> kwota ta wynosi: 20zł<br>
+						<br />W przypadku płatności poprzez PayPal wystarczy wejść na <a href="https://www.paypal.me/infinityx2" target="_blank">tą stronę</a> po czym wybrać odpowiednią kwotę oraz w komentarzu wpisać swój nick na forum.<br>Następnie wystarczy cierpliwie poczekać na wiadomość od administratora (jeśli miałeś opcje podania "komentarza do płatności", jeśli nie - wystarczy napisać PW do <a href="index.php?showuser=1">{IPSMember::makeNameFormatted( Infinity,4)}</a> z numerem transakcji)<br><br><br>
+						<b>Posiadam kod</b><br />
+						Kody premium są udostępniane przez administracje projektu w ramach wydarzeń na serwerze, jako nagroda za pomoc czy też po prostu jako "giveaway".<br /><br />
+						<form method="post">
+							<input type="text" name="code" class="input_text" size="15" placeholder="Otrzymany kod" maxlength="12" required="reqired"> 
+
+							<input type="submit" style="margin-top: 2px;"class="ipsButton_secondary" name="codeactivate" size="15" value="Aktywuj">
+						</form>
+
+
+
+					</center>
+				</fieldset>
+			</div>
+		</div>
+	</div>

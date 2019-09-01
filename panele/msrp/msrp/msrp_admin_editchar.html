@@ -1,0 +1,212 @@
+<ips:template parameters="$row, $logs, $vehs, $chars, $doors, $items" />
+{parse striping="fetchRows" classes="row1,row2"}
+<div class="maintitle ipsFilterbar clear clearfix">
+<ul class="ipsList_inline left">
+{parse template="adminTabs" group="msrp"}
+</ul>
+</div>
+<div class='ipsVerticalTabbed_content ipsLayout_content ipsBox_container' id='usercp_content'>
+<div class='ipsPad'>
+<style>.separator{height:1px;background-color:#ccc;margin:15px auto;}</style>
+<div id="adminLeftBox" style="width: 100%; float:left; position: relative;">
+<div style="width: 39%; height: auto; float: left; text-align: center;">
+<div class="ipsVerticalTabbed_content ipsLayout_content ipsBox_container">
+<form method="post" action="index.php?app=msrp&module=admin&section=editchar&uid={$this->request['uid']}">
+<fieldset class="ipsSettings_section">
+<h3 class="maintitle"> Informacje podstawowe </h3>
+<table class="ipb_table">
+<tbody>
+<php>
+$member = IPSMember::load($row['global_id']);
+</php>
+<tr class="{parse striping="fetchRows"}">
+									<td> <b>Nick OOC</b> </td>
+									<td> <a href="index.php?showuser={$row['global_id']}">{IPSMember::makeNameFormatted( $member['members_display_name'],$member['member_group_id'] )}</a> </td>
+								</tr>
+								<tr class="{parse striping="fetchRows"}">
+									<td> <b>Identyfikator</b> </td>
+									<td> {$row['player_uid']} </td>
+								</tr>
+								<tr class="{parse striping="fetchRows"}">
+									<td> <b>Nazwa</b> </td>
+									<td>
+										<if test="$this->memberData['member_group_id'] == 4 && $this->memberData['panel_perm'] & 1">
+										<input type="text" class="input_text" name="nickname" value="{$row['nickname']}">
+										<else />
+										  {$row['nickname']}
+										</if>
+									</td>
+								</tr>
+								<tr class="{parse striping="fetchRows"}">
+									<td> <b>Płeć</b></td>
+									<td>
+										<select name="sex" class="input_select">
+										<if test="$row['sex']">
+											<option value="1" selected="selected">Mężczyzna</option>
+											<option value="0">Kobieta</option>
+											<else />
+											<option value="1" >Mężczyzna</option>
+											<option value="0" selected="selected">Kobieta</option>
+										</if>
+										</select>
+									</td>
+								</tr>
+								<tr class="{parse striping="fetchRows"}">
+									<td> <b>Skin</b> </td>
+									<td> <input type="text" size="3" class="input_text" name="skin" value="{$row['skin']}"> </td>
+								</tr>
+								<tr class="{parse striping="fetchRows"}">
+									<td> <b>Wiek</b> </td>
+									<td> <input type="text" size="2" class="input_text" name="age" value="{$row['age']}"> </td>
+								</tr>
+								<if test="$this->memberData['member_group_id'] == 4 && $this->memberData['panel_perm'] & 1">
+									<tr class="{parse striping="fetchRows"}">
+										<td> <b>@</b> </td>
+										<td> <input type="text" size="1" class="input_text" name="admin" value="{$row['admin']}"> </td>
+									</tr>
+									<tr class="{parse striping="fetchRows"}">
+										<td> <b>Godziny</b> </td>
+										<td> <input type="text" size="6" class="input_text" name="hours" value="{$row['hours']}"> </td>
+									</tr>
+									<tr class="{parse striping="fetchRows"}">
+										<td> <b>Portfel</b> </td>
+										<td> <input type="text" size="20" class="input_text" name="cash" value="{$row['cash']}"> </td>
+									</tr>
+									<tr class="{parse striping="fetchRows"}">
+										<td> <b>Bank</b> </td>
+										<td> <input type="text" size="20" class="input_text" name="credit" value="{$row['credit']}"> </td>
+									</tr>
+									<else />
+									<tr class="{parse striping="fetchRows"}">
+										<td> <b>Portfel</b> </td>
+										<td> {$row['cash']} </td>
+									</tr>
+									<tr class="{parse striping="fetchRows"}">
+										<td> <b>Bank</b> </td>
+										<td> {$row['credit']} </td>
+									</tr>
+								</if>
+								<tr class="{parse striping="fetchRows"}">
+									<td> <b>Zdrowie</b> </td>
+									<td>
+										<input type="text" size="2" class="input_text" name="hp" value="{$row['hp']}">
+									</td>
+								</tr>
+								<tr class="{parse striping="fetchRows"}">
+									<td> <b>Glod</b> </td>
+									<td>
+										<input type="text" size="2" class="input_text" name="glod" value="{$row['glod']}">
+									</td>
+								</tr>
+								<tr class="{parse striping="fetchRows"}">
+									<td class="short"> <b>Warny</b> </td>
+									<td class="short"> {$row['warn']} </td>
+								</tr>
+								<tr class="{parse striping="fetchRows"}">
+									<td class="short"> <b>Block</b> </td>
+									<td class="short">
+										<select id="block" name="block[]" multiple="multiple">
+											<option value="0" <if test="$row['block'] == 0">selected</if>>Brak</option>
+											<option value="1" <if test="$row['block'] & 1">selected</if>>Blokada Postaci</option>
+											<option value="2" <if test="$row['block'] & 2">selected</if>>Ban</option>
+											<option value="4" <if test="$row['block'] & 4">selected</if>>Character Kill</option>
+											<option value="8" <if test="$row['block'] & 8">selected</if>>Blokada prowadzenia pojazdów</option>
+											<option value="16" <if test="$row['block'] & 16">selected</if>>Blokada czatów OOC</option>
+											<option value="32" <if test="$row['block'] & 32">selected</if>>Blokada biegania</option>
+											<option value="64" <if test="$row['block'] & 64">selected</if>>Blokada broni</option>
+										</select>
+									</td>
+								</tr>
+								<tr class="{parse striping="fetchRows"}">
+									<td class="short"> <b>BPP Czas (s)</b> </td>
+									<td class="short"> <input type="text" size="5" class="input_text" name="nocar" value="{$row['nocar']}"> </td>
+								</tr>
+								<tr class="{parse striping="fetchRows"}">
+									<td> <b>NoOOC Czas (s)</b> </td>
+									<td> <input type="text" size="5" class="input_text" name="noooc" value="{$row['noooc']}"> </td>
+								</tr>
+								<tr class="{parse striping="fetchRows"}">
+									<td> <b>NoGun Czas (s)</b> </td>
+									<td> <input type="text" size="5" class="input_text" name="nogun" value="{$row['nogun']}"> </td>
+								</tr>
+								<tr class="{parse striping="fetchRows"}">
+									<td> <b>NoRun Czas (s)</b> </td>
+									<td> <input type="text" size="5" class="input_text" name="norun" value="{$row['norun']}"> </td>
+								</tr>
+								<tr>
+									<td>
+									</td>
+									<td> 		<input type="submit" class="input_submit" name="updateChar" value="Zapisz"> </td>
+								</tr>
+							</tbody>
+						</table>
+					</fieldset>
+				</form>
+			</div>
+			<ul class='ipsList_inline'>
+				<li><a class="ipsButton_secondary" href="index.php?app=msrp&module=character&section=showchar&uid={$row['player_uid']}" title='Karta postaci'>Karta postaci</a></li>
+			</ul>
+		</div>
+
+
+		<div style="width: 60%; height: auto; float: right; text-align: center;">
+
+			<div class="ipsVerticalTabbed_content ipsLayout_content ipsBox_container">
+
+				<h3 class="maintitle"> Lista przedmiotów </h3>
+
+				<table class="ipb_table">
+					<tbody>
+						<tr class="header">
+							<th scope="col" class="short">UID</th>
+							<th scope="col"class="short">Nazwa</th>
+							<th scope="col" class="short">Typ przedmiotu</th>
+							<th scope="col" class="short">Wartość 1</th>
+							<th scope="col" class="short">Wartość 2</th>
+						</tr>
+						<if test="count($items)">
+							<foreach loop="$items as $item">
+								<tr class="{parse striping="fetchRows"}">
+									<td class="short"> {$item['UID']} </td>
+									<td class="short"> {$item['name']} </td>
+									<td class="short"> {$item['type']} </td>
+									<td class="short"> {$item['value1']} </td>
+									<td class="short"> {$item['value2']} </td>
+								</tr>
+							</foreach>
+							<else />
+							<tr><td colspan='5'> Nie znaleziono żadnych przedmiotów. </td></tr>
+						</if>
+					</tbody>
+				</table>
+
+				<br />
+				<br />
+				<h3 class="maintitle"> Logi logowań </h3>
+
+				<table class="ipb_table" summary="">
+					<tbody>
+						<tr class="header">
+							<th scope="col" class="short">IP</th>
+							<th scope="col" class="short">Data</th>
+						</tr>
+						<if test="count( $logs )">
+						<foreach loop="$logs as $log">
+							<tr class="{parse striping="fetchRows"}">
+								<td class="short"> {$log['ip']} </td>
+								<td class="short"> {parse date="$log['time']" format="short"} </td>
+							</tr>
+						</foreach>
+						<else />
+							<tr>
+								<td colspan="2">Brak logowan w ciągu ostatnich 30 dni.</td>
+							</tr>
+						</if>
+					</tbody>
+				</table>
+			</div>
+		</div>
+		<br />
+	</div>
+</div>
+</div>

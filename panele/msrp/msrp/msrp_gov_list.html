@@ -1,0 +1,55 @@
+<ips:template parameters="$groups" />
+{parse striping="fetchLogs" classes="row2,row1"}
+<div class="maintitle ipsFilterbar clear clearfix">
+<ul class="ipsList_inline left">
+{parse template="govTabs" group="msrp"}
+</ul>
+</div>
+<div class="ipsVerticalTabbed_content ipsLayout_content ipsBox_container">
+<div class="ipsPad">
+<div class="ipsVerticalTabbed_content ipsLayout_content">
+<table class="ipb_table report_center">
+<tbody>
+<tr class="header">
+<td scope="col" class="short">UID</td>
+<td scope="col" class="short">Nazwa grupy</td>
+<td scope="col" class="short">Lider</td>
+<td scope="col" class="short">Stan konta</td>
+<td scope="col" class="short">Konto pracownicze</td>
+<td scope="col" class="short">Dotacja</td>
+<td scope="col" class="short">Typ</td>
+<td scope="col" class="short">Opcje</td>
+</tr>
+<if test="count($groups)">
+<foreach loop="$groups as $row">
+<tr class="{parse striping="fetchLogs"}">
+                <td class="short">{$row['UID']}</td>
+                <td class="short">{$row['name']}</td>
+
+                <td class="short">
+                  <if test="$row['leader']">
+                    <a href="index.php?app=msrp&module=character&section=showchar&uid={$row['leader']}">{$row['leadernick']}</a>
+                  <else />
+                  Brak
+                </if>
+                </td>
+                <td class="short"><font color="green"><b>$</b></font> {$row['cash']}</td>
+                <td class="short"><font color="green"><b>$</b></font> {$row['salary_account']}</td>
+                <td class="short"><span style="font-weight: bold; color: green;">$</span> {$row['grant']}</td>
+                <td class="short">{$row['typename']}</td>
+                <td class="short">
+      						<ul class='ipsList_inline'>
+      							<li><a class="ipsButton_secondary" href="index.php?app=msrp&module=gov&section=groupinfo&uid={$row['UID']}">Szczegóły</a></li>
+      						</div>
+                </td>
+              </tr>
+            </foreach>
+            <else />
+            <tr colspan="5"><td>Nie znaleziono żadnej grupy.</td></tr>
+          </if>
+        </tbody>
+      </table>
+      <div class="float:right;">{$pagination}</div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,947 @@
+/*----------------------------------------------------------------------------*-
+					==============================
+					Y Sever Includes - Groups Core
+					==============================
+Description:
+	Handles grouping for players.  Each player can be in multiple groups and
+	recieve all the benefits of all those groups.  However individual settings
+	can be modified temporarilly per player through the respective other files.
+	
+	Groups are similar to levels only more flexible.  They can be used to
+	substitue levels exactly with different groups being used for differnt
+	levels however "higher" groups are not inclusive.  I.e. with levels a level
+	5 player would have all the commands of levels 0, 1, 2, 3 and 4 aswell (or
+	would in most systems).  With this groups are entirely sepatarate but as
+	you can be in multiple groups you could put someone in the groups for
+	levels 0, 1, 2, 3, 4 and 5, giving them all those command.  Or you could
+	exclude someone from level 3 commands while still having them at level 5
+	if you wanted.
+	
+	Update:
+	
+	The default behaviour for groups has been entirely changed for ease of
+	use.  By default everything is usable by all groups, you have to remove
+	things from groups that can't use them.  This is to make it FAR easier to
+	add things as they're mote likely to be used than not.  If a player is in a
+	group which can use something they can still use it to maintain the multiple
+	groups per player model.
+	
+	Update 2:
+	
+	Default group added, all players and objects are in this group by default
+	and new players are automatically added to this group.  Old behaviour of
+	other groups restored (default everything off).  Fortunately no code was
+	written between updates so revision was easy :).
+Legal:
+	Copyright (C) 2007 Alex "Y_Less" Cole
+
+	This program is free software; you can redistribute it and/or
+	modify it under the terms of the GNU General Public License
+	as published by the Free Software Foundation; either version 2
+	of the License, or (at your option) any later version.
+
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with this program; if not, write to the Free Software
+	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+	MA 02110-1301, USA.
+Changelog:
+	17/05/07:
+		Re-redesigned code to have a default group (see description update 2).
+		Redesigned the code to be default active (see description update).
+	07/05/07:
+		Added objects.
+		Added player use.
+		Did documentation.
+	04/05/07:
+		First version.
+Functions:
+	Public:
+		-
+	Core:
+		-
+	Stock:
+		Group_NameGroup - Names a group.
+		Group_SetCommand - Sets whether or not a group can use a named command.
+		Group_SetCommandByID - Sets whether or not a group can use a command.
+		Group_UpdatePlayerCommand - Updates a player's use of a command.
+		Group_SetCheckpoint - Sets whether or not a group can see a checkpoint.
+		Group_UpdatePlayerCheckpoint - Updates a player's view of a checkpoint.
+		Group_SetObject - Sets whether or not a group can see an object.
+		Group_UpdatePlayerObject - Updates a player's view of an object.
+		Group_SetArea - Sets whether or not a group can use an area.
+		Group_UpdatePlayerArea - Updates a player's use or an area.
+		Group_SetProperty - Sets whether or not a group can see a property.
+		Group_UpdatePlayerProperty - Updates a player's sight of a property.
+		Group_AddPlayer - Adds a player to a group.
+		Group_RemovePlayer - Removes a player from a group.
+		Group_RemovePlayerFromAllGroups - Removes a player from all their groups.
+	Static:
+		-
+	Inline:
+		Group_IsValid - Checks a given ID is valid.
+	API:
+		-
+Definitions:
+	GROUP_CHECKPOINT_BITS - Number of bytes required to hold all checkpoints.
+	GROUP_COMMAND_BITS - Number of bytes required to hold all commands.
+	GROUP_AREA_BITS - Number of bytes required to hold all areas.
+	GROUP_PROPERTY_BITS - Number of bytes required to hold all properties.
+	GROUP_OBJECT_BITS - Number of bytes required to hold all objects.
+	GROUP_COUNT_BITS - Number of bytes required to hold all groups.
+	MAX_GROUPS - Number of groups.
+	MAX_GROUP_NAME - Max length of a group's name.
+Enums:
+	E_GROUP_DATA - Data for each group.
+Macros:
+	-
+Tags:
+	-
+Variables:
+	Global:
+		-
+	Static:
+		YSI_g_sGroupData - Data for all groups.
+		YSI_g_sPlayerGroups - Which groups a player is in.
+Commands:
+	-
+Compile options:
+	GROUP_NAME_GROUPS - Use group names.
+Operators:
+	-
+-*----------------------------------------------------------------------------*/
+
+#if defined _YSI_VISUAL_CHECKPOINTS
+	#if MAX_CHECKPOINTS <= 32
+		#define GROUP_CHECKPOINT_BITS 2
+	#else
+		#define GROUP_CHECKPOINT_BITS Bit_Bits(MAX_CHECKPOINTS)
+	#endif
+#endif
+
+#if defined _YSI_CORE_COMMANDS
+	#if MAX_COMMANDS <= 32
+		#define GROUP_COMMAND_BITS 2
+	#else
+		#define GROUP_COMMAND_BITS Bit_Bits(MAX_COMMANDS)
+	#endif
+#endif
+
+#if defined _YSI_VISUAL_AREAS
+	#if MAX_AREAS <= 32
+		#define GROUP_AREA_BITS 2
+	#else
+		#define GROUP_AREA_BITS Bit_Bits(MAX_AREAS)
+	#endif
+#endif
+
+#if defined _YSI_VISUAL_PROPERTIES
+	#if MAX_PROPERTIES <= 32
+		#define GROUP_PROPERTY_BITS 2
+	#else
+		#define GROUP_PROPERTY_BITS Bit_Bits(MAX_PROPERTIES)
+	#endif
+#endif
+
+#if defined _YSI_VISUAL_OBJECTS
+	#if MAX_DYN_OBJECTS <= 32
+		#define GROUP_OBJECT_BITS 2
+	#else
+		#define GROUP_OBJECT_BITS Bit_Bits(MAX_DYN_OBJECTS)
+	#endif
+#endif
+
+#define MAX_GROUP_NAME 64
+#define GROUP_NAME_GROUPS
+
+#if !defined MAX_GROUPS
+	#define MAX_GROUPS 32
+#endif
+
+#if MAX_GROUPS <= 32
+	#define GROUP_COUNT_BITS 2
+#else
+	#define GROUP_COUNT_BITS Bit_Bits(MAX_GROUPS)
+#endif
+
+enum E_GROUP_DATA
+{
+	#if defined GROUP_NAME_GROUPS
+		E_GROUP_DATA_NAME[MAX_GROUP_NAME],
+	#endif
+	#if defined _YSI_VISUAL_CHECKPOINTS
+		Bit:E_GROUP_DATA_CHECKPOINTS[GROUP_CHECKPOINT_BITS],
+	#endif
+	#if defined _YSI_CORE_COMMANDS
+		Bit:E_GROUP_DATA_COMMANDS[GROUP_COMMAND_BITS],
+	#endif
+	#if defined _YSI_VISUAL_AREAS
+		Bit:E_GROUP_DATA_AREAS[GROUP_AREA_BITS],
+	#endif
+	#if defined _YSI_VISUAL_PROPERTIES
+		Bit:E_GROUP_DATA_PROPERTIES[GROUP_PROPERTY_BITS],
+	#endif
+	#if defined _YSI_VISUAL_OBJECTS
+		Bit:E_GROUP_DATA_OBJECTS[GROUP_OBJECT_BITS],
+	#endif
+	Bit:E_GROUP_DATA_PLAYERS[PLAYER_BIT_ARRAY]
+}
+
+static
+	YSI_g_sGroupData[MAX_GROUPS][E_GROUP_DATA],
+	Bit:YSI_g_sPlayerGroups[MAX_PLAYERS][GROUP_COUNT_BITS],
+	YSI_g_sDefaultGroup[E_GROUP_DATA];
+
+#if defined GROUP_NAME_GROUPS
+	#if (_:E_GROUP_DATA) <= (PLAYER_BIT_ARRAY + MAX_GROUP_NAME)
+		#error No group data used (named)!
+	#endif
+#else
+	#if (sizeof (YSI_g_sGroupData)) <= ((MAX_GROUPS) * (PLAYER_BIT_ARRAY))
+		#error No group data used!
+	#endif
+#endif
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Group_IsValid
+Params:
+	group - Group to check validity of.
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+#define Group_IsValid(%1) \
+	((%1) >= 0 && (%1) < MAX_GROUPS)
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Group_NameGroup
+Params:
+	group - Group to name.
+	name[] - Name of group.
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock Group_NameGroup(group, name[])
+{
+	#if defined GROUP_NAME_GROUPS
+		if (Group_IsValid(group)) strcpy(YSI_g_sGroupData[group][E_GROUP_DATA_NAME], name, MAX_GROUP_NAME);
+	#else
+		#pragma unused group, name
+	#endif
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Group_SetCommand
+Params:
+	group - Group to add command to.
+	command[] - Command to add to group.
+	set - 1/0 can be used.
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock Group_SetCommand(group, command[], set)
+{
+	#if defined _YSI_CORE_COMMANDS
+		if (Group_IsValid(group)) Group_SetCommandByID(group, Command_FindFunc(command, Command_Hash(command), strlen(command)), set);
+	#else
+		#pragma unused group, command, set
+	#endif
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Group_SetCommandByID
+Params:
+	group - Group to add command to.
+	command - Command to add to group.
+	set - 1/0 can be used.
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock Group_SetCommandByID(group, command, set)
+{
+	#if defined _YSI_CORE_COMMANDS
+		if (Group_IsValid(group) && command >= 0 && command < MAX_COMMANDS)
+		{
+			Bit_Set(YSI_g_sGroupData[group][E_GROUP_DATA_COMMANDS], command, set);
+			for (new i = 0; i < MAX_PLAYERS; i++)
+			{
+				if (Bit_Get(YSI_g_sGroupData[group][E_GROUP_DATA_PLAYERS], i))
+				{
+					if (set) Command_SetPlayerUseByID(command, i, 1);
+					else Group_UpdatePlayerCommand(command, i);
+				}
+			}
+		}
+	#else
+		#pragma unused group, command, set
+	#endif
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Group_SetDefaultCommand
+Params:
+	command[] - Command to add to group.
+	set - 1/0 can be used.
+Return:
+	-
+Notes:
+	Sets a command in the default group.
+-*----------------------------------------------------------------------------*/
+
+stock Group_SetDefaultCommand(command[], set)
+{
+	#if defined _YSI_CORE_COMMANDS
+		Group_SetDefaultCommandByID(Command_FindFunc(command, Command_Hash(command), strlen(command)), set);
+	#else
+		#pragma unused command, set
+	#endif
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Group_SetDefaultCommandByID
+Params:
+	command - Command to add to group.
+	set - 1/0 can be used.
+Return:
+	-
+Notes:
+	Sets a command in the default group.
+-*----------------------------------------------------------------------------*/
+
+stock Group_SetDefaultCommandByID(command, set)
+{
+	#if defined _YSI_CORE_COMMANDS
+		if (command >= 0 && command < MAX_COMMANDS)
+		{
+			Bit_Set(YSI_g_sDefaultGroup[E_GROUP_DATA_COMMANDS], command, set);
+			for (new i = 0; i < MAX_PLAYERS; i++)
+			{
+				if (set) Command_SetPlayerUseByID(command, i, 1);
+				else Group_UpdatePlayerCommand(command, i);
+			}
+		}
+	#else
+		#pragma unused command, set
+	#endif
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Group_UpdatePlayerCommand
+Params:
+	command - Command to update.
+	playerid - Player modified.
+Return:
+	-
+Notes:
+	Checks if the player is in any group which can use the
+	given command and if not stops them using it.
+-*----------------------------------------------------------------------------*/
+
+stock Group_UpdatePlayerCommand(command, playerid)
+{
+	#if defined _YSI_CORE_COMMANDS
+		if (Bit_Get(YSI_g_sDefaultGroup[E_GROUP_DATA_COMMANDS], command))
+		{
+			Command_SetPlayerUseByID(command, playerid, 1);
+			return;
+		}
+		for (new i = 0; i < MAX_GROUPS; i++)
+		{
+			if (Bit_Get(YSI_g_sPlayerGroups[playerid], i))
+			{
+				if (Bit_Get(YSI_g_sGroupData[i][E_GROUP_DATA_COMMANDS], command))
+				{
+					Command_SetPlayerUseByID(command, playerid, 1);
+					return;
+				}
+			}
+		}
+		Command_SetPlayerUseByID(command, playerid, 0);
+	#else
+		#pragma unused command, playerid
+	#endif
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Group_SetCheckpoint
+Params:
+	group - Group to add checkpoint to.
+	checkpoint - Checkpoint to add to group.
+	set - 1/0 can be used.
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock Group_SetCheckpoint(group, checkpoint, set)
+{
+	#if defined _YSI_VISUAL_CHECKPOINTS
+		if (Group_IsValid(group) && checkpoint >= 0 && checkpoint < MAX_CHECKPOINTS)
+		{
+			Bit_Set(YSI_g_sGroupData[group][E_GROUP_DATA_CHECKPOINTS], checkpoint, set);
+			for (new i = 0; i < MAX_PLAYERS; i++)
+			{
+				if (Bit_Get(YSI_g_sGroupData[group][E_GROUP_DATA_PLAYERS], i))
+				{
+					if (set) Checkpoint_AddPlayer(checkpoint, i);
+					else Group_UpdatePlayerCheckpoint(checkpoint, i);
+				}
+			}
+		}
+	#else
+		#pragma unused group, checkpoint, set
+	#endif
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Group_SetDefaultCheckpoint
+Params:
+	checkpoint - Checkpoint to add to group.
+	set - 1/0 can be used.
+Return:
+	-
+Notes:
+	Sets a checkpoint in the default group.
+-*----------------------------------------------------------------------------*/
+
+stock Group_SetDefaultCheckpoint(checkpoint, set)
+{
+	#if defined _YSI_VISUAL_CHECKPOINTS
+		if (checkpoint >= 0 && checkpoint < MAX_CHECKPOINTS)
+		{
+			Bit_Set(YSI_g_sDefaultGroup[E_GROUP_DATA_CHECKPOINTS], checkpoint, set);
+			for (new i = 0; i < MAX_PLAYERS; i++)
+			{
+				if (set) Checkpoint_AddPlayer(checkpoint, i);
+				else Group_UpdatePlayerCheckpoint(checkpoint, i);
+			}
+		}
+	#else
+		#pragma unused checkpoint, set
+	#endif
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Group_UpdatePlayerCheckpoint
+Params:
+	checkpoint - Checkpoint to check.
+	playerid - Player to check existence of use for.
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock Group_UpdatePlayerCheckpoint(checkpoint, playerid)
+{
+	#if defined _YSI_VISUAL_CHECKPOINTS
+		if (Bit_Get(YSI_g_sDefaultGroup[E_GROUP_DATA_CHECKPOINTS], checkpoint))
+		{
+			Checkpoint_AddPlayer(checkpoint, playerid);
+			return;
+		}
+		for (new i = 0; i < MAX_GROUPS; i++)
+		{
+			if (Bit_Get(YSI_g_sPlayerGroups[playerid], i))
+			{
+				if (Bit_Get(YSI_g_sGroupData[i][E_GROUP_DATA_CHECKPOINTS], checkpoint))
+				{
+					Checkpoint_AddPlayer(checkpoint, playerid);
+					return;
+				}
+			}
+		}
+		Checkpoint_RemovePlayer(checkpoint, player);
+	#else
+		#pragma unused checkpoint, playerid
+	#endif
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Group_SetObject
+Params:
+	group - Group to add object to.
+	object = Object to add.
+	set - 1/0 can be used.
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock Group_SetObject(group, object, set)
+{
+	#if defined _YSI_VISUAL_OBJECTS
+		if (Group_IsValid(group) && object >= 0 && object < MAX_DYN_OBJECTS)
+		{
+			Bit_Set(YSI_g_sGroupData[group][E_GROUP_DATA_OBJECTS], object, set);
+			for (new i = 0; i < MAX_PLAYERS; i++)
+			{
+				if (Bit_Get(YSI_g_sGroupData[group][E_GROUP_DATA_PLAYERS], i))
+				{
+					if (set) Object_AddToPlayer(object, i);
+					else Group_UpdatePlayerObject(object, i);
+				}
+			}
+		}
+	#else
+		#pragma unused group, object, set
+	#endif
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Group_SetDefaultObject
+Params:
+	object = Object to add.
+	set - 1/0 can be used.
+Return:
+	-
+Notes:
+	Sets an object in the default group.
+-*----------------------------------------------------------------------------*/
+
+stock Group_SetDefaultObject(object, set)
+{
+	#if defined _YSI_VISUAL_OBJECTS
+		if (object >= 0 && object < MAX_DYN_OBJECTS)
+		{
+			Bit_Set(YSI_g_sDefaultGroup[E_GROUP_DATA_OBJECTS], object, set);
+			for (new i = 0; i < MAX_PLAYERS; i++)
+			{
+				if (set) Object_AddToPlayer(object, i);
+				else Group_UpdatePlayerObject(object, i);
+			}
+		}
+	#else
+		#pragma unused object, set
+	#endif
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Group_UpdatePlayerObject
+Params:
+	object - Object to check.
+	playerid - Player to check for.
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock Group_UpdatePlayerObject(object, playerid)
+{
+	#if defined _YSI_VISUAL_OBJECTS
+		if (Bit_Get(YSI_g_sDefaultGroup[E_GROUP_DATA_OBJECTS], object))
+		{
+			Object_AddToPlayer(object, playerid);
+			return;
+		}
+		for (new i = 0; i < MAX_GROUPS; i++)
+		{
+			if (Bit_Get(YSI_g_sPlayerGroups[playerid], i))
+			{
+				if (Bit_Get(YSI_g_sGroupData[i][E_GROUP_DATA_OBJECTS], object))
+				{
+					Object_AddToPlayer(object, playerid);
+					return;
+				}
+			}
+		}
+		Checkpoint_RemovePlayer(checkpoint, player);
+	#else
+		#pragma unused object, playerid
+	#endif
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Group_SetArea
+Params:
+	group - Group to add area to.
+	area - Area to add to group.
+	set - 1/0 can be used.
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock Group_SetArea(group, area, set)
+{
+	#if defined _YSI_VISUAL_AREAS
+		if (Group_IsValid(group) && area >= 0 && area < MAX_AREAS)
+		{
+			Bit_Set(YSI_g_sGroupData[group][E_GROUP_DATA_AREAS], area, set);
+			for (new i = 0; i < MAX_PLAYERS; i++)
+			{
+				if (Bit_Get(YSI_g_sGroupData[group][E_GROUP_DATA_PLAYERS], i))
+				{
+					if (set) Area_SetPlayer(area, i, 1);
+					else Group_UpdatePlayerArea(area, i);
+				}
+			}
+		}
+	#else
+		#pragma unused group, area, set
+	#endif
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Group_SetDefaultArea
+Params:
+	area - Area to add to group.
+	set - 1/0 can be used.
+Return:
+	-
+Notes:
+	Sets an area in the default group.
+-*----------------------------------------------------------------------------*/
+
+stock Group_SetDefaultArea(area, set)
+{
+	#if defined _YSI_VISUAL_AREAS
+		if (area >= 0 && area < MAX_AREAS)
+		{
+			Bit_Set(YSI_g_sDefaultGroup[E_GROUP_DATA_AREAS], area, set);
+			for (new i = 0; i < MAX_PLAYERS; i++)
+			{
+				if (set) Area_SetPlayer(area, i, 1);
+				else Group_UpdatePlayerArea(area, i);
+			}
+		}
+	#else
+		#pragma unused area, set
+	#endif
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Group_UpdatePlayerArea
+Params:
+	area - Area to update.
+	playerid - Player to update for.
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock Group_UpdatePlayerArea(area, playerid)
+{
+	#if defined _YSI_VISUAL_AREAS
+		if (Bit_Get(YSI_g_sDefaultGroup[E_GROUP_DATA_AREAS], area))
+		{
+			Area_SetPlayer(area, playerid, 1);
+			return;
+		}
+		for (new i = 0; i < MAX_GROUPS; i++)
+		{
+			if (Bit_Get(YSI_g_sPlayerGroups[playerid], i))
+			{
+				if (Bit_Get(YSI_g_sGroupData[i][E_GROUP_DATA_AREAS], area))
+				{
+					Area_SetPlayer(area, playerid, 1);
+					return;
+				}
+			}
+		}
+		Area_SetPlayer(area, playerid, 0);
+	#else
+		#pragma unused area, playerid
+	#endif
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Group_SetProperty
+Params:
+	group - Group to add property to.
+	property - Property to add to group.
+	set - 1/0 can be used.
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock Group_SetProperty(group, property, set)
+{
+	#if defined _YSI_VISUAL_PROPERTIES
+		if (Group_IsValid(group) && property >= 0 && property < MAX_PROPERTIES)
+		{
+			Bit_Set(YSI_g_sGroupData[group][E_GROUP_DATA_PROPERTIES], property, set);
+			for (new i = 0; i < MAX_PLAYERS; i++)
+			{
+				if (Bit_Get(YSI_g_sGroupData[group][E_GROUP_DATA_PLAYERS], i))
+				{
+					if (set) Property_SetPlayer(property, i, 1);
+					else Group_UpdatePlayerProperty(property, i);
+				}
+			}
+		}
+	#else
+		#pragma unused group, property, set
+	#endif
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Group_SetDefaultProperty
+Params:
+	group - Group to add property to.
+	set - 1/0 can be used.
+Return:
+	-
+Notes:
+	Like Group_SetProperty but for the default group.
+-*----------------------------------------------------------------------------*/
+
+stock Group_SetDefaultProperty(property, set)
+{
+	#if defined _YSI_VISUAL_PROPERTIES
+		if (property >= 0 && property < MAX_PROPERTIES)
+		{
+			Bit_Set(YSI_g_sDefaultGroup[E_GROUP_DATA_PROPERTIES], property, set);
+			for (new i = 0; i < MAX_PLAYERS; i++)
+			{
+				if (set) Property_SetPlayer(property, i, 1);
+				else Group_UpdatePlayerProperty(property, i);
+			}
+		}
+	#else
+		#pragma unused property, set
+	#endif
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Group_UpdatePlayerProperty
+Params:
+	property - Property to update.
+	playerid - Player to update for.
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock Group_UpdatePlayerProperty(property, playerid)
+{
+	#if defined _YSI_VISUAL_PROPERTIES
+		if (Bit_Get(YSI_g_sDefaultGroup[E_GROUP_DATA_PROPERTIES], property))
+		{
+			Property_SetPlayer(property, playerid, 1);
+			return;
+		}
+		for (new i = 0; i < MAX_GROUPS; i++)
+		{
+			if (Bit_Get(YSI_g_sPlayerGroups[playerid], i))
+			{
+				if (Bit_Get(YSI_g_sGroupData[i][E_GROUP_DATA_PROPERTIES], property))
+				{
+					Property_SetPlayer(property, playerid, 1);
+					return;
+				}
+			}
+		}
+		Property_SetPlayer(property, playerid, 0);
+	#else
+		#pragma unused property, playerid
+	#endif
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Group_AddPlayer
+Params:
+	group - Group to add player to.
+	playerid - Player to add.
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock Group_AddPlayer(group, playerid)
+{
+	if (!Group_IsValid(group)) return;
+	Bit_Set(YSI_g_sPlayerGroups[playerid], group, 1);
+	Bit_Set(YSI_g_sGroupData[group][E_GROUP_DATA_PLAYERS], playerid, 1);
+	#if defined _YSI_CORE_COMMANDS
+		for (new i = 0; i < MAX_COMMANDS; i++) if (Bit_Get(YSI_g_sGroupData[group][E_GROUP_DATA_COMMANDS], i)) Command_SetPlayerUseByID(i, playerid, 1);
+	#endif
+	#if defined _YSI_VISUAL_CHECKPOINTS
+		for (new i = 0; i < MAX_CHECKPOINTS; i++) if (Bit_Get(YSI_g_sGroupData[group][E_GROUP_DATA_CHECKPOINTS], i)) Checkpoint_AddPlayer(i, playerid);
+	#endif
+	#if defined _YSI_VISUAL_AREAS
+		for (new i = 0; i < MAX_AREAS; i++) if (Bit_Get(YSI_g_sGroupData[group][E_GROUP_DATA_AREAS], i)) Area_AddPlayer(i, playerid);
+	#endif
+	#if defined _YSI_VISUAL_PROPERTIES
+		for (new i = 0; i < MAX_PROPERTIES; i++) if (Bit_Get(YSI_g_sGroupData[group][E_GROUP_DATA_PROPERTIES], i)) Property_AddPlayer(i, playerid);
+	#endif
+	#if defined _YSI_VISUAL_OBJECTS
+		for (new i = 0; i < MAX_DYN_OBJECTS; i++) if (Bit_Get(YSI_g_sGroupData[group][E_GROUP_DATA_OBJECTS], i)) Object_AddToPlayer(i, playerid);
+	#endif
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Group_RemovePlayer
+Params:
+	group - Group to remove player from.
+	playerid - Player to remove.
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock Group_RemovePlayer(group, playerid)
+{
+	if (!Group_IsValid(group)) return;
+	if (!Bit_Get(YSI_g_sPlayerGroups[playerid], group)) return;
+	Bit_Set(YSI_g_sPlayerGroups[playerid], group, 0);
+	Bit_Set(YSI_g_sGroupData[group][E_GROUP_DATA_PLAYERS], playerid, 0);
+	#if defined _YSI_CORE_COMMANDS
+		for (new i = 0; i < MAX_COMMANDS; i++) Group_UpdatePlayerCommand(i, playerid);
+	#endif
+	#if defined _YSI_VISUAL_CHECKPOINTS
+		for (new i = 0; i < MAX_CHECKPOINTS; i++) Group_UpdatePlayerCheckpoint(i, playerid);
+	#endif
+	#if defined _YSI_VISUAL_AREAS
+		for (new i = 0; i < MAX_AREAS; i++) Group_UpdatePlayerArea(i, playerid);
+	#endif
+	#if defined _YSI_VISUAL_PROPERTIES
+		for (new i = 0; i < MAX_PROPERTIES; i++) Group_UpdatePlayerProperty(i, playerid);
+	#endif
+	#if defined _YSI_VISUAL_OBJECTS
+		for (new i = 0; i < MAX_DYN_OBJECTS; i++) Group_UpdatePlayerObject(i, playerid);
+	#endif
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Group_RemovePlayerFromAllGroups
+Params:
+	playerid - Player to remove from all groups.
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock Group_RemovePlayerFromAllGroups(playerid)
+{
+	for (new group = 0; group < MAX_GROUPS; group++) Bit_Set(YSI_g_sGroupData[group][E_GROUP_DATA_PLAYERS], playerid, 0);
+	Bit_SetAll(YSI_g_sPlayerGroups[playerid], 0);
+	#if defined _YSI_CORE_COMMANDS
+		for (new i = 0; i < MAX_COMMANDS; i++) Command_SetPlayerUseByID(i, playerid, 0);
+	#endif
+	#if defined _YSI_VISUAL_CHECKPOINTS
+		for (new i = 0; i < MAX_CHECKPOINTS; i++) Checkpoint_RemovePlayer(i, playerid);
+	#endif
+	#if defined _YSI_VISUAL_AREAS
+		for (new i = 0; i < MAX_AREAS; i++) Area_SetPlayer(i, playerid, 0);
+	#endif
+	#if defined _YSI_VISUAL_PROPERTIES
+		for (new i = 0; i < MAX_PROPERTIES; i++) Property_SetPlayer(i, playerid, 0);
+	#endif
+	#if defined _YSI_VISUAL_OBJECTS
+		for (new i = 0; i < MAX_DYN_OBJECTS; i++) Object_RemoveFromPlayer(i, playerid);
+	#endif
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Group_Group
+Params:
+	-
+Return:
+	-
+Notes:
+	Sets up variable defaults.
+-*----------------------------------------------------------------------------*/
+
+Group_Group()
+{
+	#if defined _YSI_CORE_COMMANDS
+		Bit_SetAll(YSI_g_sDefaultGroup[E_GROUP_DATA_COMMANDS], 1);
+	#endif
+	#if defined _YSI_VISUAL_CHECKPOINTS
+		Bit_SetAll(YSI_g_sDefaultGroup[E_GROUP_DATA_CHECKPOINTS], 1);
+	#endif
+	#if defined _YSI_VISUAL_AREAS
+		Bit_SetAll(YSI_g_sDefaultGroup[E_GROUP_DATA_AREAS], 1);
+	#endif
+	#if defined _YSI_VISUAL_PROPERTIES
+		Bit_SetAll(YSI_g_sDefaultGroup[E_GROUP_DATA_PROPERTIES], 1);
+	#endif
+	#if defined _YSI_VISUAL_OBJECTS
+		Bit_SetAll(YSI_g_sDefaultGroup[E_GROUP_DATA_OBJECTS], 1);
+	#endif
+	return 1;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	Group_OnPlayerConnect
+Params:
+	playerid - Player who connected.
+Return:
+	-
+Notes:
+	Sets up a player's default settings.
+-*----------------------------------------------------------------------------*/
+
+Group_OnPlayerConnect(playerid)
+{
+	for (new i = 0; i < MAX_GROUPS; i++) Bit_Set(YSI_g_sGroupData[i][E_GROUP_DATA_PLAYERS], playerid, 0);
+	Bit_SetAll(YSI_g_sPlayerGroups[playerid], 0);
+
+	#if defined _YSI_CORE_COMMANDS
+		for (new i = 0; i < MAX_COMMANDS; i++) Command_SetPlayerUseByID(i, playerid, Bit_Get(YSI_g_sDefaultGroup[E_GROUP_DATA_COMMANDS], i));
+	#endif
+	#if defined _YSI_VISUAL_CHECKPOINTS
+		for (new i = 0; i < MAX_CHECKPOINTS; i++) if (Bit_Get(YSI_g_sDefaultGroup[E_GROUP_DATA_CHECKPOINTS], i)) Checkpoint_AddPlayer(i, playerid); else Checkpoint_RemovePlayer(i, playerid);
+	#endif
+	#if defined _YSI_VISUAL_AREAS
+		for (new i = 0; i < MAX_AREAS; i++) Area_SetPlayer(i, playerid, Bit_Get(YSI_g_sDefaultGroup[E_GROUP_DATA_AREAS], i));
+	#endif
+	#if defined _YSI_VISUAL_PROPERTIES
+		for (new i = 0; i < MAX_PROPERTIES; i++) Property_SetPlayer(i, playerid, Bit_Get(YSI_g_sDefaultGroup[E_GROUP_DATA_PROPERTIES], i));
+	#endif
+	#if defined _YSI_VISUAL_OBJECTS
+		for (new i = 0; i < MAX_DYN_OBJECTS; i++) if (Bit_Get(YSI_g_sDefaultGroup[E_GROUP_DATA_OBJECTS], i)) Object_AddToPlayer(i, playerid); else Object_RemoveFromPlayer(i, playerid);
+	#endif
+	return 1;
+}

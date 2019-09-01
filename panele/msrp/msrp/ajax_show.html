@@ -1,0 +1,19 @@
+<ips:template parameters="$string, $row, $pagination, $applogs, $biochange" />
+<div class="maintitle ipsFilterbar clear clearfix">mój tekst</div>
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+Licznik: <span id="counter">200</span>
+<textarea id="text"></textarea>
+<script>
+
+function counterChange() {
+    var n = jQuery('#text').val().split('').length;
+    if(n <= 200)
+        jQuery('#counter').html(200 - n);
+    else
+        jQuery('#counter').html("Pisz dalej śmiało.");
+}
+
+jQuery('#text').change(function() { counterChange(); });
+jQuery('#text').keyup(function() { counterChange(); });
+
+</script>

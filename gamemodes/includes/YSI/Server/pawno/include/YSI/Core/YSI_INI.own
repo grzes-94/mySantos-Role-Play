@@ -1,0 +1,317 @@
+/*----------------------------------------------------------------------------*-
+					===========================
+					Y Sever Includes - INI Core
+					===========================
+Description:
+	Reads the INI and also exports a number of functions to other "classes" for
+	easy reading of data files there.
+Legal:
+	Copyright (C) 2007 Alex "Y_Less" Cole
+
+	This program is free software; you can redistribute it and/or
+	modify it under the terms of the GNU General Public License
+	as published by the Free Software Foundation; either version 2
+	of the License, or (at your option) any later version.
+
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with this program; if not, write to the Free Software
+	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+	MA 02110-1301, USA.
+Version:
+	0.1.2
+Changelog:
+	15/04/07:
+		Updated for more whitespaces.
+		Added INI comment code.
+		Added support for value-less entries.
+		Modified entry extraction to use end of name location parameter.
+		Removed INI_GetTagName, now done via INI_GetEntryName.
+	14/04/07:
+		Updated header documentation with more than changelog.
+	24/03/07:
+		First version.
+Functions:
+	Public:
+		-
+	Core:
+		-
+	Stock:
+		INI_Load - Loads an INI file using standard features.
+		INI_INI - Constructor.
+		INI_ParseFile - Loads a file as an ini and distributes data.
+		INI_GetEntryName - Gets the name of an INI item.
+		INI_GetEntryText - Gets the value of an INI item.
+	Static:
+		-
+	Inline:
+		INI_BroadcastData - Transmits the loaded data to wherever.
+		INI_Int - Parse an integer INI entry.
+		INI_Float - Parse a float INI entry.
+		INI_Hex - Parse a hex INI entry.
+		INI_Bin - Parse a binary INI entry.
+		INI_String - Parse a string INI entry.
+	API:
+		-
+Callbacks:
+	-
+Definitions:
+	MAX_INI_TAG - Maximum length of an INI tagname.
+	MAX_INI_ENTRY_NAME - Maximum length of an INI entry name.
+	MAX_INI_ENTRY_TEXT - Maximum length of an INI's entries' value.
+	MAX_INI_LINE - Maximum length of a line in a file.
+Enums:
+	-
+Macros:
+	INI_Parse - Header for ini parsing functions.
+Tags:
+	-
+Variables:
+	Global:
+		-
+	Static:
+		-
+Commands:
+	-
+Compile options:
+	-
+Operators:
+	-
+-*----------------------------------------------------------------------------*/
+
+#define MAX_INI_TAG 16
+#define MAX_INI_ENTRY_NAME 32
+#define MAX_INI_ENTRY_TEXT 80
+#define MAX_INI_LINE (MAX_INI_ENTRY_NAME + MAX_INI_ENTRY_TEXT + 16)
+
+#define INI_Parse(%1,%2) \
+	forward INI_Parse_%1_%2(name[], value[]); \
+	public INI_Parse_%1_%2(name[], value[])
+
+/*----------------------------------------------------------------------------*-
+Function:
+	INI_Int
+Params:
+	name[] - Name of the INI textual identifier.
+	function - Function to call with integer value.
+Return:
+	function().
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+#define INI_Int(%1,%2) \
+	if (!strcmp((%1), name, true)) return %2(strval(value))
+
+/*----------------------------------------------------------------------------*-
+Function:
+	INI_Float
+Params:
+	name[] - Name of the INI textual identifier.
+	function - Function to call with float value.
+Return:
+	function().
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+#define INI_Float(%1,%2) \
+	if (!strcmp((%1), name, true)) return %2(floatstr(value))
+
+/*----------------------------------------------------------------------------*-
+Function:
+	INI_Hex
+Params:
+	name[] - Name of the INI textual identifier.
+	function - Function to call with hex value.
+Return:
+	function().
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+#define INI_Hex(%1,%2) \
+	if (!strcmp((%1), name, true)) return %2(hexstr(value))
+
+/*----------------------------------------------------------------------------*-
+Function:
+	INI_Bin
+Params:
+	name[] - Name of the INI textual identifier.
+	function - Function to call with binary value.
+Return:
+	function().
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+#define INI_Bin(%1,%2) \
+	if (!strcmp((%1), name, true)) return %2(binstr(value))
+
+/*----------------------------------------------------------------------------*-
+Function:
+	INI_String
+Params:
+	name[] - Name of the INI textual identifier.
+	function - Function to call with string value.
+Return:
+	function().
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+#define INI_String(%1,%2) \
+	if (!strcmp((%1), name, true)) return %2(value)
+
+/*----------------------------------------------------------------------------*-
+Function:
+	INI_INI
+Params:
+	-
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+stock INI_INI() {}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	INI_GetEntryName
+Params:
+	source - The string you want to get an entry name from.
+	dest - The place you want to store the entry name to
+Return:
+	bool: Found the name correctly.
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+bool:INI_GetEntryName(source[], dest[], &i)
+{
+	new
+		j;
+	while (source[j] && source[j] <= ' ') j++;
+	i = j;
+	while (source[i] > ' ' && source[i] != '=') i++;
+	if (i == j) return false;
+	strcpy(dest, source[j], i - j, MAX_INI_ENTRY_NAME);
+	return true;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	INI_BroadcastData
+Params:
+	function[] - The remote function to save the data to.
+	identifier[] - The string identifier for the text.
+	text[] - The text itself.
+Return:
+	-
+Notes:
+	Calls a remote function for the current tag, passing the parameter name
+	and the parameter data.  This function is also used to broadcast text
+	entries to wrapper functions for the singular Text_AddToBuffer for all 
+	the text tags that module wants.
+	
+	Formally Langs_SendEntryData
+-*----------------------------------------------------------------------------*/
+
+#define INI_BroadcastData(%1,%2,%3) \
+	CallRemoteFunction((%1), "ss", (%2), (%3))
+
+/*----------------------------------------------------------------------------*-
+Function:
+	INI_GetEntryText
+Params:
+	source - The string you want to get an entry from.
+	dest - The place you want to store the entry to
+Return:
+	-
+Notes:
+	-
+-*----------------------------------------------------------------------------*/
+
+INI_GetEntryText(source[], dest[], i)
+{
+	while (source[i] && (source[i] <= ' ' || source[i] == '=')) i++;
+	if (!source[i]) return;
+	strcpy(dest, source[i], strlen(source) - i, MAX_INI_ENTRY_TEXT);
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	INI_ParseFile
+Params:
+	filename[] - The file to load.
+	remoteFormat[] - The format string to generate the remote function to
+		pass the data to once loaded.
+	bool:bFileFirst - The order of the remoteFormat parameters.
+Return:
+	-
+Notes:
+	bFileFirst sets the order and inclusion of the possible remoteFormat
+	parameters.  If true the format will add the filename first then the 
+	current tag, if false the order will be reversed.  This can also be used
+	to exclude one or the other from the function name by setting the required
+	parameter to be entered first and then only haing one %s in the format
+	sting.  The default order is tag first for languages compatability.
+-*----------------------------------------------------------------------------*/
+
+bool:INI_ParseFile(filename[], remoteFormat[], bool:bFileFirst = false)
+{
+	new
+		File:f;
+	if (!(f = fopen(filename, io_read))) return false;
+	new
+		line[MAX_INI_LINE],
+		tagName[MAX_STRING];
+	while (fread(f, line))
+	{
+		StripNL(line);
+		if (!line[0]) continue;
+		new
+			comment = chrfind(';', line),
+			stringIdent[MAX_INI_ENTRY_NAME],
+			pos;
+		if (comment != -1) line[comment] = '\0';
+		if (!INI_GetEntryName(line, stringIdent, pos)) continue;
+		if (stringIdent[0] == '[' && (comment = chrfind(']', stringIdent)) != -1)
+		{
+			stringIdent[comment] = '\0';
+			if (bFileFirst) format(tagName, sizeof (tagName), remoteFormat, filename, stringIdent[1]);
+			else format(tagName, sizeof (tagName), remoteFormat, stringIdent[1], filename);
+		}
+		else if (tagName[0])
+		{
+			new
+				stringText[MAX_INI_ENTRY_TEXT];
+			INI_GetEntryText(line, stringText, pos);
+			INI_BroadcastData(tagName, stringIdent, stringText);
+		}
+	}
+	fclose(f);
+	return true;
+}
+
+/*----------------------------------------------------------------------------*-
+Function:
+	INI_Load
+Params:
+	filename[] - The file to load.
+Return:
+	INI_ParseFile
+Notes:
+	Wrapper for INI_ParseFile to use standard API features so people can
+	worry even less.  Designed for use with INI_Parse.
+-*----------------------------------------------------------------------------*/
+
+stock bool:INI_Load(filename[])
+{
+	return INI_ParseFile(filename, "INI_Parse_%s_%s", true);
+}

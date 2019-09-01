@@ -1,0 +1,55 @@
+<ips:template parameters="$logs" />
+{parse striping="fetchLogs" classes="row2,row1"}
+{parse js_module="game"}
+<div class="maintitle ipsFilterbar clearfix">
+<ul class="ipsList_inline">
+{parse template="groupTabs" group="msrp"}
+</ul>
+</div>
+<div class="ipsCustomBox" style="width: 100%; float: left">
+<div class="ipsVerticalTabbed_content ipsLayout_content ipsBox_container">
+<div class="ipsPad">
+<fieldset class="row1">
+<form method="post" action>
+<table class="ipb_table report_center">
+<tbody>
+<tr class="header">
+<th scope="col" class="short"> UID </th>
+<th scope="col" class="short"> Nazwa</th>
+<th scope="col" class="short"> Osoba</th>
+<th scope="col" class="short"> Wydane przez </th>
+<th scope="col" class="short"> Czas </th>
+</tr>
+<if test="count( $logs )">
+<foreach loop="$logs as $log">
+<tr class='{parse striping="fetchLogs"}'>
+<td class="short">
+{$log['weapuid']}
+</td>
+<td class="short">
+{$log['name']}
+</td>
+<td class="short">
+{$log['player_uid']}<br />{$log['player_gid']}
+</td>
+<td class="short">
+{$log['seller_uid']}
+</td>
+<td class="short">
+{parse date="$log['time']" format="short"}
+</td>
+</tr>
+</foreach>
+<else />
+<tr>
+<td colspan='5'>
+Brak logów.
+</td>
+</if>
+</tbody>
+</table>
+</form>
+</fieldset>
+</div>
+</div>
+</div>

@@ -1,0 +1,38 @@
+<ips:template parameters="$online" />
+<style>.boxOut{border:1px solid #d2d2d2;-webkit-box-shadow:rgba(0,0,0,0.1) 0px 0px 4px;-moz-box-shadow:rgba(0,0,0,0.1) 0px 0px 4px;box-shadow:rgba(0,0,0,0.1) 0px 0px 4px;padding:6px;-webkit-border-radius:4px;-moz-border-radius:4px;border-radius:4px;}</style>
+{parse template="characterTabs" group="msrp"}
+<div class="ipsVerticalTabbed_content ipsLayout_content ipsBox_container" id="modcp_content" style="min-height: 254px; ">
+<div class="ipsPad">
+<div class="ipsVerticalTabbed_content ipsLayout_content gamehubMainContent">
+<if test="count($online)">
+<php>$count = count($online);</php>
+<center>
+<div class="message">Gracze online: <b>{$count}</b></div>
+</center>
+<foreach loop="$online as $row">
+<php>
+$member = IPSMember::load( $row['global_id'] );
+$czas = time();
+</php>
+<div class="boxOut" style="width: 210px; height: auto; display: inline-block; padding-top: 5px; padding-bottom:5px; margin-top: 5px;<if test="$member['premium'] >= $czas">background: rgba(238, 201, 0, 0.5);<else />background: #ffff;</if>">
+
+						<div class="img s ipsUserPhoto ipsUserPhoto_small left">
+								{IPSMember::buildProfilePhoto($member['member_id'], $size=small)}
+						</div>
+						<div class="list_content" style="padding: 5px 0 0 70px;">
+							<if test="$row['hide'] & 1"><i>Postać ukryta</i><else />{$row['nickname']}</if>
+							<p class="desc ipsType_smaller" style=>
+								{$row['hours']}h {$row['minutes']}m<br /> <a href="index.php?showuser={$row['global_id']}">{IPSMember::makeNameFormatted( $member['members_display_name'],$member['member_group_id'] )}</a>
+							</p>
+						</div>
+					</div>
+				</foreach>
+				<else />
+				<center>
+					<div class="message unspecific">Brak graczy online.</div>
+				</center>
+
+			</if>
+		</div>
+	</div>
+</div>
