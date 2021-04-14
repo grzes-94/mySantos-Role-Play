@@ -47,18 +47,8 @@ class public_msrp_admin_premka extends ipsCommand
       $lastSms[]=$row;
     }
 		
-		$result = $this->DB->query("SELECT `code_uid`, `member_id`, UNIX_TIMESTAMP(`activation_time`) AS `time`  FROM `panel_skin_codes` ORDER BY `code_uid` DESC LIMIT 15");
-		while($row = $result->fetch_assoc())
-    {
-      $row['member']=$functions->GetMemberName($row['member_id']);
 
-      $skinSms[]=$row;
-			
-    }
-
-
-
-	$template = $this->registry->output->getTemplate('msrp')->msrp_admin_premium($premium,$lastSms, $code, $skinSms);
+	$template = $this->registry->output->getTemplate('msrp')->msrp_admin_premium($premium,$lastSms, $code, []);
 	$this->registry->getClass('output')->addContent($template);
 	$this->registry->output->setTitle('Kody premium');
 	$this->registry->output->addNavigation( 'Panel administratora', 'app=panel&module=admin' );

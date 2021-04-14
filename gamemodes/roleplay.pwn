@@ -54,13 +54,6 @@
 
 #include "modules/cmd_debug.inc"
 
-#include "modules/AC/CLEO.inc"
-#include "modules/AC/antycheat.inc"
-#include "modules/AC/AntiFC.inc"
-#include "modules/AC/rAsc.inc"
-#include "modules/AC/rAcs.inc"
-#include "modules/AC/AntiSba.inc"
-
 main() 
 {
 	print("------------------------------------------");
@@ -68,7 +61,8 @@ main()
 	print("------------------------------------------");
 }
 
-new SERVER_DOWNLOAD[] = "https://prinson-rp.eu/models";
+/*
+new SERVER_DOWNLOAD[] = "https://ms-rp.pl/models";
 public OnPlayerRequestDownload(playerid, type, crc)
 {
 	if(!IsPlayerConnected(playerid))
@@ -90,6 +84,7 @@ public OnPlayerRequestDownload(playerid, type, crc)
 	
 	return 1;
 }
+*/
 
 public OnPlayerFinishedDownloading(playerid, virtualworld)
 {
